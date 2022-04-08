@@ -7,19 +7,22 @@
 #A covariate file (covariate_PRS.txt) is also necessary, which must contain the following columns ID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1), PC1-PC5, and APOE4 status (carriers / non-carriers)
  
 
-# 1.Set the working directory
+# 1. Set path to the working directory
 DIR=/path_to_directory/
 cd DIR
 
-# 2.For each cohort, exclude palindromic SNPs from imputed QC'ed bim files
+# 2.Define path to location of imputed QC'ed binary files
+COHORT_PATH=/path_to_cohort/filename
+
+# 3.For each cohort, exclude palindromic SNPs from imputed QC'ed bim files
 
   #Run the R script 
-    Rscript --vanilla Remove_Palindromes.R COHORT_FILENAME.bim
+    Rscript --vanilla Remove_Palindromes.R ${COHORT_PATH}.bim
     #This will generate the file 'at-cg-snps.txt'
   
   #Exclude palindromic SNPs 
-    COHORT_PATH=/path_to_cohort/filename
-    COHORT_NAME=cohort_filename
+  
+  COHORT_NAME=cohort_filename
   
     plink1.9 --bfile ${COHORT_PATH} \
       --exclude at-cg-snps.txt \
@@ -46,7 +49,7 @@ cd DIR
     --score AD_ScoreFile_noAPOE.txt \
     --out AD_GRS_${COHORT_NAME}_noAPOE
 
-# 3.Perform regression analysis and plot results
+# 4.Perform regression analysis and plot results
 
   R
   #Load packages
