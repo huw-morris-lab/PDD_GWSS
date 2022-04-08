@@ -1,0 +1,326 @@
+#GENETIC RISK SCORE ANALYSIS
+
+#Summary statistics of the Kunkle et al. (2019) AD GWAS meta-analysis and the Nalls et al. (2019) PD GWAS were used to generate AD and PD GRS, respectively.
+#Score files used in the analysis consist of the lead genome-wide SNPs from the above GWAS studies.
+#Each score file (AD_ScoreFile.txt and PD_ScoreFile.txt) contains 3 columns: SNP_ID, Effect_allele and Estimate.
+#SNP_IDs in the score files must match SNP nomenclature in the study dataset.
+#A covariate file (covariate_PRS.txt) is also necessary, which must contain the following columns ID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1), PC1-PC5, and APOE4 status (carriers / non-carriers)
+ 
+
+# 1.Set the working directory
+DIR=/path_to_directory/
+cd DIR
+
+# 2.For each cohort, exclude palindromic SNPs from imputed QC'ed bim files
+
+  #Run the R script 
+    Rscript --vanilla Remove_Palindromes.R COHORT_FILENAME.bim
+    #This will generate the file 'at-cg-snps.txt'
+  
+  #Exclude palindromic SNPs 
+    COHORT_PATH=/path_to_cohort/filename
+    COHORT_NAME=cohort_filename
+  
+    plink1.9 --bfile ${COHORT_PATH} \
+      --exclude at-cg-snps.txt \
+     --make-bed \
+     --out ${COHORT_NAME}.nopalindrome
+    
+  #If there are duplicate SNP IDs, keep only the first instance of each duplicate-ID variant
+    plink2 --bfile ${COHORT_NAME}.nopalindrome \
+      --rm-dup force-first \
+      --make-bed \
+      --out ${COHORT_NAME}.nopalindrome.nodups
+    
+#Calculate AD or PD genetic risk scores (this step will generate a .profile file)
+  plink1.9 --bfile ${COHORT_NAME}.nopalindrome.nodups \
+    --score AD_ScoreFile.txt \
+    --out AD_GRS_${COHORT_NAME}
+    
+   plink1.9 --bfile ${COHORT_NAME}.nopalindrome.nodups \
+    --score PD_ScoreFile.txt \
+    --out PD_GRS_${COHORT_NAME}
+
+#Calculate AD genetic risk scores after excluding APOE from the AD_ScoreFile.txt  
+    plink1.9 --bfile ${COHORT_NAME}.nopalindrome.nodups \
+    --score AD_ScoreFile_noAPOE.txt \
+    --out AD_GRS_${COHORT_NAME}_noAPOE
+
+# 3.Perform regression analysis and plot results
+
+  R
+  #Load packages
+    x <- c("data.table", "dplyr", "tidyverse", "survival","meta","ggplot2")
+    lapply(x, require, character.only = TRUE)
+
+  #Read covariate file
+    clinical <- fread("covariate_PRS.txt", header = T)
+    clinical$event <- as.factor(clinical$event) #as factor
+    clinical$event <- relevel(clinical$event_dementia, ref="0")
+  
+  #---AD---#
+  
+  #Create an empty results dataframe
+    coefficients_GRS <-as.data.frame(matrix(ncol= 7))
+    names(coefficients_GRS) <- c("Cohort","Coeff", "se", "Pvalue","OR","lower_ci","upper_ci")
+
+  #Read .profile outputs and merge with covariate file (AD_GRS_${COHORT_NAME}.profile from previous step) 
+    cohorts <- c("cohort1","cohort2","cohort3","cohort4")
+    
+    for (i in 1:length(cohorts)) 
+    {
+      name <- cohorts[i]
+
+      #Read in GRS
+        GRS <- fread(paste("AD_GRS_",name,".profile", sep = ""))
+  
+        GRS <- GRS %>% 
+                select(FID, IID, SCORE)
+
+      #Merge with covariate file
+        merged <- clinical %>% 
+                  inner_join(GRS, by = c("IID"))
+
+      #Normalize Score to Z-Score
+        meanControls <- mean(merged$SCORE[merged$event == "0"])
+        sdControls <- sd(merged$SCORE[merged$event == "0"])
+        merged$zSCORE <- (merged$SCORE - meanControls)/sdControls
+
+      #Perform logistic regression adjusted by covariates
+        grs <- glm(event ~ zSCORE + gender + PC1 + PC2 + PC3 + PC4 + PC5 + ageOnset, family="binomial", data = merged)
+
+      #Fill-in results dataframe
+        coefficients_GRS[i,1]<- name
+        coefficients_GRS[i,2]<- summary(grs)$coefficients[2,1]
+        coefficients_GRS[i,3]<- summary(grs)$coefficients[2,2]
+        coefficients_GRS[i,4]<- summary(grs)$coefficients[2,4]
+        coefficients_GRS[i,5]<- exp(summary(grs)$coefficients[2,1])
+        coefficients_GRS[i,6]<- exp(summary(grs)$coefficients[2,1]-1.96*summary(grs)$coefficients[2,2])
+        coefficients_GRS[i,7]<- exp(summary(grs)$coefficients[2,1]+1.96*summary(grs)$coefficients[2,2]) 
+      }
+
+  #Meta-analyse cohorts using both fixed-effects and random-effects meta-analysis models
+    settings.meta("geneexpr")
+    meta_dementia <- metagen(TE = Coeff,
+                          seTE = se,
+                          studlab = Cohort,
+                          data = coefficients_GRS,
+                          sm = "OR",
+                          fixed = TRUE,
+                          random = TRUE)
+
+     summary <- summary(meta_dementia)
+  
+  #Data visualisation (Violin plots)
+    #Read GRS profile files and create STUDY column with cohort name
+      for(i in cohorts) {
+          fileName <- paste0("AD_GRS_",i ,".profile")
+          GRS <- read.delim(fileName, header = T, sep = "")
+          GRS <- GRS %>% 
+                    select(FID, IID, SCORE)
+          GRS$STUDY <- i
+          assign(paste0("GRS_", i), GRS)
+       }
+    
+    #Merge each cohort profile with the covariate file
+      output = lapply(list(GRS_cohort1=GRS_cohort1,GRS_cohort2=GRS_cohort2,GRS_cohort3=GRS_cohort3,GRS_cohort4=GRS_cohort4),inner_join,clinical,by="IID")
+      list2env(output,envir=.GlobalEnv)
+    
+    #Merge cohorts
+      GRS_ALL <- list(GRS_cohort1, GRS_cohort2, GRS_cohort3, GRS_cohort4) %>% reduce(full_join)
+     
+    #Normalize Score to Z-Score in each cohort
+      meanControls <- aggregate(GRS_ALL$SCORE, list(GRS_ALL$STUDY,GRS_ALL$event), FUN=mean)
+      names(meanControls)[1] <- 'Group'
+      names(meanControls)[2] <- "Pheno"
+
+      sdControls <- aggregate(GRS_ALL$SCORE, list(GRS_ALL$STUDY,GRS_ALL$event), FUN=sd)
+      names(sdControls)[1] <- 'Group'
+      names(sdControls)[2] <- "Pheno"
+
+      meanControls_cohort1 <- meanControls %>% filter(Group == "cohort1" & Pheno == "0") %>% select(x)
+      sdControls_cohort1 <- sdControls  %>% filter(Group == "cohort1" & Pheno == "0") %>% select(x)
+      
+      meanControls_cohort2 <- meanControls  %>% filter(Group == "cohort2" & Pheno == "0") %>% select(x)
+      sdControls_cohort2 <- sdControls  %>% filter(Group == "cohort2" & Pheno == "0") %>% select(x)
+      
+      meanControls_cohort3 <- meanControls  %>% filter(Group == "cohort3" & Pheno == "0") %>% select(x)
+      sdControls_cohort3 <- sdControls  %>% filter(Group == "cohort3" & Pheno == "0") %>% select(x)
+      
+      meanControls_cohort4 <- meanControls  %>% filter(Group == "cohort4" & Pheno == "0") %>% select(x)
+      sdControls_cohort4 <- sdControls  %>% filter(Group == "cohort4" & Pheno == "0") %>% select(x)
+
+      GRS_cohort1$zSCORE <- (GRS_cohort1$SCORE - meanControls_cohort1$x)/sdControls_cohort1$x
+      GRS_cohort2$zSCORE <- (GRS_cohort2$SCORE - meanControls_cohort2$x)/sdControls_cohort2$x
+      GRS_cohort3$zSCORE <- (GRS_cohort3$SCORE - meanControls_cohort3$x)/sdControls_cohort3$x
+      GRS_cohort4$zSCORE <- (GRS_cohort4$SCORE - meanControls_cohort4$x)/sdControls_cohort4$x
+
+    #Merge cohorts
+      merge <- list(GRS_cohort1, GRS_cohort2, GRS_cohort3, GRS_cohort4) %>% reduce(full_join)
+      merge$PHENO[merge$event == 0] <- "PD"
+      merge$PHENO[merge$event == 1] <- "PDD"
+      merge$PHENO <- with(merge, factor(PHENO, levels=c("PD","PDD")))
+
+      p <- ggplot(merge, aes(x= reorder(as.factor(PHENO), zSCORE), y=zSCORE, fill=as.factor(PHENO))) +
+              geom_violin(trim=FALSE)
+      p <- p + geom_boxplot(width=0.05, fill="white") + theme_minimal() 
+      p <- p + scale_fill_manual(values=c("#E69F00", "#56B4E9")) + theme_bw() + ylab("AD GRS (Z-transformed)") +xlab("") + theme(legend.position = "none")
+      p <- p + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+      p <- p + theme(legend.position = "none")
+      p + theme(text = element_text(size = 14))
+      ggsave("AD_GRS.jpeg", dpi = 600, units = "in", height = 6, width = 6)
+
+  #Data visualization (Forest plots)
+    pdf("forest-plot_AD_GRS.pdf", width = 10, height = 3)
+    forest(meta_dementia,
+      studlab = T,
+      study.results = T,
+      xlab = "OR (95% CI)",
+      addrow = T,
+      addrows.below.overall = 4,
+      ref = NA,
+      test.overall.fixed = F, #Print results of test for overall effect
+      test.overall.random = F,
+      col.square = "black", 
+      hetstat = T,
+      print.I2 = T,
+      print.Q = T,
+      print.pval.Q = T,
+      scientific.pval = F,
+      random = T,
+      fixed = F,
+      rightcols = c("effect", "ci"),
+      leftcols = c("studlab"),
+      rightlabs = c("OR", "95% CI"),
+      col.diamond = "#E69F00",
+      layout = "meta")
+    dev.off()
+
+
+  #Perform survival analysis adjusted by covariates
+  
+    #Split data into tertiles of GRS
+        mylist <- list(GRS_cohort1,GRS_cohort2,GRS_cohort3,GRS_cohort4)
+
+        mylist <- lapply(mylist,function(L){
+                      vTert = quantile(L$SCORE, c(0:3/3))
+                      L$tert = with(L, 
+                      cut(SCORE, 
+                         vTert, 
+                         include.lowest = T, 
+                         labels = c("Low", "Medium", "High")))
+                      L$tert = factor(L$tert, levels=c("Low", "Medium", "High"))
+                      L
+                   })
+
+      names <- c("cohort1", "cohort2", "cohort3", "cohort4")
+      names(mylist) <- names #name the lists
+      
+      list2env(mylist,envir=.GlobalEnv)
+  
+      write.table(cohort1,"cohort1_AD_GRS_TERTILE.txt", sep = "\t", col.names = T, row.names = F, quote = F)
+      write.table(cohort2,"cohort2_AD_GRS_TERTILE.txt", sep = "\t", col.names = T, row.names = F, quote = F)
+      write.table(cohort3,"cohort3_AD_GRS_TERTILE.txt", sep = "\t", col.names = T, row.names = F, quote = F)
+      write.table(cohort4,"cohort4_AD_GRS_TERTILE.txt", sep = "\t", col.names = T, row.names = F, quote = F)
+
+    #Create empty results dataframe
+      coefficients_GRS <- as.data.frame(matrix(ncol= 13))
+      names(coefficients_GRS) <- c("Cohort","Coeff_Medium", "se_Medium", "Pvalue_Medium","HR_Medium","lower_ci_Medium","upper_ci_Medium","Coeff_High", "se_High", "Pvalue_High","HR_High","lower_ci_High","upper_ci_High")
+    
+    #Perform survival analysis by cohort
+  
+      for (i in 1:length(cohorts)) 
+          {
+                name <- cohorts[i]
+
+           #Read in GRS
+                GRS_tert <- fread(paste(name,"_AD_GRS_TERTILE.txt", sep = ""))
+                GRS_tert$tert = factor(GRS_tert$tert, levels=c("Low", "Medium", "High"))
+
+           #Perform CPH regression adjusted by covariates
+                cox <- coxph(Surv(timeToEvent, event) ~ tert + gender + PC1 + PC2 + PC3 + PC4 + PC5 + ageOnset, data = GRS_tert)
+                summary(cox)
+
+                coefficients_GRS[i,1]<- name
+                coefficients_GRS[i,2]<- summary(cox)$coefficients[1,1]
+                coefficients_GRS[i,3]<- summary(cox)$coefficients[1,3]
+                coefficients_GRS[i,4]<- summary(cox)$coefficients[1,5]
+                coefficients_GRS[i,5]<- exp(summary(cox)$coefficients[1,1])
+                coefficients_GRS[i,6]<- exp(summary(cox)$coefficients[1,1]-1.96*summary(cox)$coefficients[1,3])
+                coefficients_GRS[i,7]<- exp(summary(cox)$coefficients[1,1]+1.96*summary(cox)$coefficients[1,3])
+                coefficients_GRS[i,8]<- summary(cox)$coefficients[2,1]
+                coefficients_GRS[i,9]<- summary(cox)$coefficients[2,3]
+                coefficients_GRS[i,10]<- summary(cox)$coefficients[2,5]
+                coefficients_GRS[i,11]<- exp(summary(cox)$coefficients[2,1])
+                coefficients_GRS[i,12]<- exp(summary(cox)$coefficients[2,1]-1.96*summary(cox)$coefficients[2,3])
+                coefficients_GRS[i,13]<- exp(summary(cox)$coefficients[2,1]+1.96*summary(cox)$coefficients[2,3]) 
+            }
+
+          #Meta-analyse cohorts using both fixed-effects and random-effects meta-analysis models
+             #Meta-analyse HIGH vs LOW GRS tertile   
+                settings.meta("geneexpr")
+                meta_dementia_HIGH <- metagen(TE = Coeff_High,
+                         seTE = se_High,
+                         studlab = Cohort,
+                         data = coefficients_GRS,
+                         sm = "HR",
+                         fixed = TRUE,
+                         random = TRUE)
+                summary_HIGH <- summary(meta_dementia_HIGH)
+             
+              #Meta-analyse MEDIUM vs LOW GRS tertile 
+                  meta_dementia_MEDIUM <- metagen(TE = Coeff_Medium,
+                         seTE = se_Medium,
+                         studlab = Cohort,
+                         data = coefficients_GRS,
+                         sm = "HR",
+                         fixed = TRUE,
+                         random = TRUE)
+                  summary_MEDIUM <- summary(meta_dementia_MEDIUM)
+  
+  #Data visualisation (Survival curves)
+      GRS <- list(cohort1, cohort2, cohort3, cohort4) %>% reduce(full_join)
+     
+     pdf("AD_GRS_TERTILES_KM.pdf")
+     plot(survfit(Surv(GRS$timeToEvent, GRS$event) ~ GRS$tert),  
+      frame.plot = FALSE, #remove frame
+      mark.time = F, #censoring 
+      conf.int = F, #confidence intervals
+      xlim = c(0, 20), #x-axis limits
+      col = c("#E69F00","#56B4E9","#0072B2"),
+      lty = 1, #solid line
+      lwd = 2, #line thickness
+      xlab = "Years", 
+      ylab = "Survival dementia free",
+      font.lab = 2, #bold axis labels
+      main = "Survival dementia free by AD GRS tertile") 
+     legend('bottomleft',
+       legend = levels(GRS$tert),
+       col = c("#E69F00","#56B4E9","#0072B2"),
+       lty = 1, #line type
+       lwd = 2, #line thickness
+       bty = "n", #remove box
+       text.font = 1, #bold legend 
+       )
+      dev.off()
+
+    #---AD without APOE---#
+      #Repet previous steps using AD_GRS_${COHORT_NAME}_noAPOE.profile files
+      
+    #---PD---#
+      #Repeat previous steps using PD_GRS_${COHORT_NAME}.profile files 
+    
+    q("no")
+    
+ #END
+
+    
+
+    
+  
+  
+  
+  
+  
+
