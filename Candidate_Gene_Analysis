@@ -1,1 +1,523 @@
-#For candidate gene analysis, 
+#For candidate gene analysis, single SNPs from APOE, GBA, SNCA, MAPT, RIMS2, TMEM108 and WWOX were selected from the literature.
+#Candidate gene analysis was performed in the combined datasets.
+#All cohorts are in build hg19, except for AMP-PD which is in build hg38. Use the liftOver tool to convert bp positions to hg19 prior to merging. 
+#A covariate file of the combined dataset (clinical.txt) is also necessary, which must contain the following columns IID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1) and Study (cohort name)
+ 
+
+# 1.Define path to location of each set of unimputed QC'ed binary files
+
+COHORT1_PATH=/path_to_cohort/filename
+COHORT2_PATH=/path_to_cohort/filename
+COHORT3_PATH=/path_to_cohort/filename
+COHORT4_PATH=/path_to_cohort/filename
+
+# 2.Merge unimputed QC'ed datasets
+
+#Merge cohort1 and cohort2
+plink1.9 --bfile ${COHORT1_PATH} \
+    --bmerge ${COHORT2_PATH} \
+    --make-bed \
+    --out merge1
+
+#If there are strand issues, use --flip with one of the source files and the .missnp file, and then retry the merge  
+  plink1.9 --bfile ${COHORT1_PATH} \
+    --flip merge1-merge.missnp \
+    --make-bed \
+    --out flipped1
+
+  plink1.9 --bfile flipped1 \
+    --bmerge ${COHORT2_PATH} \
+    --make-bed \
+    --out merge2
+
+ #Merge with cohort3
+  plink1.9 --bfile merge2 \
+    --bmerge ${COHORT3_PATH} \
+    --make-bed \
+    --out merge3
+
+#If there are strand issues, use --flip with one of the source files and the .missnp file, and then retry the merge
+  plink1.9 --bfile merge2 \
+    --flip merge3-merge.missnp \
+    --make-bed \
+    --out flipped2
+
+  plink1.9 --bfile flipped2 \
+    --bmerge ${COHORT3_PATH} \
+    --make-bed \
+    --out merge3 
+    
+#Merge with cohort4
+  plink1.9 --bfile merge3 \
+    --bmerge ${COHORT4_PATH} \
+    --make-bed \
+    --out merge4
+
+#If there are strand issues, use --flip with one of the source files and the .missnp file, and then retry the merge
+  plink1.9 --bfile merge3 \
+    --flip merge4-merge.missnp \
+    --make-bed \
+    --out flipped3
+
+  plink1.9 --bfile flipped3 \
+    --bmerge ${COHORT4_PATH} \
+    --make-bed \
+    --out merge4
+    
+ 
+# 3.Check for relatedness across cohorts
+  plink1.9 --bfile merge4 \
+    --geno 0.01 \
+    --maf 0.05 \
+    --indep-pairwise 50 5 0.5 \
+    --out pruning
+
+  plink1.9 --bfile merge_qced_PD_unimputed_3 \
+    --extract pruning.prune.in \
+    --missing \
+    --genome --min 0.125 \
+    --out IBD_check
+  
+  #Run the R script to generate a list of related individuals to exclude (IBD_DUPLICATES.txt).
+  Rscript --no-save /mnt/rreal/RDS/Raquel/Scripts/RScripts/checkRelatedness.R
+
+  ##Remove related/duplicate individuals 
+  plink1.9 --bfile merge4 \
+    --remove IBD_DUPLICATES.txt \
+    --make-bed \
+    --out merge4_ibd
+    
+# 4.Calculate PCs in the combined cohorts to use as covariates
+  plink1.9 --bfile merge4_ibd \
+    --exclude range exclusion_regions_hg19.txt \
+    --geno 0.01 \
+    --maf 0.01 \
+    --hwe 5E-6 \
+    --autosome \
+    --indep-pairwise 1000 10 0.02 \
+    --out pruning 
+
+  plink1.9 --bfile merge4_ibd \
+    --extract pruning.prune.in \
+    --make-bed \
+    --out merge4_ibd.pruned
+
+  plink1.9 --bfile merge4_ibd.pruned \
+    --pca \
+    --out PCA 
+
+# 5.Extract SNPs of interest
+  plink1.9 --bfile merge4_ibd  \
+               --keep-allele-order \
+               --allow-no-sex \
+               --geno 0.05 \
+               --hwe 0.00000001 \
+               --exclude exclusion_regions_hg19.txt \
+               --extract APOE_SNPs.txt \
+               --recode vcf-iid \
+               --out merge4_APOE
+  sed '/^##/ d' < merge4_APOE.vcf > $merge4_APOE.txt
+  
+  #Repeat for each of the SNPs of interest
+  
+# 6.Perform survival analysis in the combined dataset for each of the SNPs or haplotypes of interest
+   
+  R
+  #Load packages
+    x <- c("data.table","dplyr","survival","stringr")
+    lapply(x, require, character.only = TRUE)
+    
+  #Read covariate file
+    clinical <- fread("clinical.txt", header = T)
+  
+  #Read PCs from combined dataset and rename columns
+    PCs <- fread("PCA.eigenvec")
+    PCs <- PCs %>%
+		  select(V1:V12) %>%
+		  rename(FID = V1,
+		  	IID = V2,
+		  	PC1 = V3,
+		  	PC2 = V4,
+		  	PC3 = V5,
+		  	PC4 = V6,
+	  		PC5 = V7,
+	  		PC6 = V8,
+	  		PC7 = V9,
+	  		PC8 = V10,
+	  		PC9 = V11,
+		  	PC10 = V12)
+        
+   ##APOE
+   #Read APOE genotypes
+   apoe <- fread("merge4_APOE.txt", header = T)
+   names(apoe)[1]<- "CHROM"
+   
+   #Read APOE mutation names
+   mutation_names <- fread("apoe_mutation_names.txt",header=F)
+   names(mutation_names)[1] <- "ID"
+   
+   #Build APOE haplotype 
+    plink_data <- merge(apoe, mutation_names, by = "ID")
+    dim(plink_data)
+    names(plink_data)[...] <- "Variant_ID" #change number in [] according to dim (should be number of columns)
+    plink_data$ID <- plink_data$Variant_ID 
+    plink_data$Variant_ID <- NULL
+
+    apoe_vcf <- subset(plink_data, select = -c(2:9))
+    apoe_vcf[apoe_vcf == "0/0"] <- 0
+    apoe_vcf[apoe_vcf == "0/1"] <- 1
+    apoe_vcf[apoe_vcf == "1/1"] <- 2
+    apoe_vcf[apoe_vcf == "./."] <- NA
+
+    apoe_vcf_t <- setnames(apoe_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          apoe_vcf[, c('sample_id', ID)])[]
+
+    apoe_vcf_t$APOE <- with(apoe_vcf_t,ifelse(rs429358 == "0" & rs7412 == "0", "e3/e3", 
+                             ifelse(rs429358 == "0" & rs7412 == "1", "e2/e3", 
+                                    ifelse(rs429358 == "0" & rs7412 == "2", "e2/e2",
+                                           ifelse(rs429358 == "1" & rs7412 == "0", "e3/e4", 
+                                                  ifelse(rs429358 == "1" & rs7412 == "1", "e2/e4", 
+                                                         ifelse(rs429358 == "2" & rs7412 == "0", "e4/e4", 
+                                                                'NA')))))))
+
+
+   names(apoe_vcf_t)[1] <- "IID"
+
+  #Merge genotypes with clinical and PC files
+    apoe_status <- clinical %>%
+      inner_join(PCs, by = "IID") %>%
+      inner_join(apoe_vcf_t, by = "IID")
+
+    apoe_status_update <- apoe_status %>% select(IID,event,timeToEvent,ageOnset,gender,APOE,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Create column with presence/absence of E4 and convert to factor
+    apoe_status_update <- apoe_status_update %>% mutate(E4_allele = ifelse(str_detect(APOE, "e4"), "e4-carrier", "e4-non_carrier"))
+    apoe_status_update$E4_allele = factor(apoe_status_update$E4_allele, levels=c("e4-non_carrier","e4-carrier"))
+
+ #Recode gender and convert to factor
+    apoe_status_update$gender <- ifelse(apoe_status_update$gender == "Male" | apoe_status_update$gender == "male" | apoe_status_update$gender == "0",1,2)
+    apoe_status_update$gender = factor(apoe_status_update$gender, levels=c(1,2))
+    
+ #Survival analysis based on APOE e4
+    m.cox1 <- coxph(Surv(timeToEvent, event) ~ E4_allele + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=apoe_status_update)
+
+ #Plot Kaplan-Mayer curves 
+    pdf("COMBINED_COHORTS_APOE_E4_KM.pdf")
+    plot(survfit(Surv(timeToEvent, event) ~ E4_allele, data=apoe_status_update),  
+    frame.plot = FALSE, #remove frame
+    mark.time = T, #censoring 
+    conf.int = F, #confidence intervals
+    xlim = c(0, 20), #x-axis limits
+    col=c("#E69F00","#56B4E9"),
+    lty=1, #solid line
+    lwd = 2, #line thickness
+    xlab="Years", 
+    ylab="Survival dementia free",
+    font.lab=2, #bold axis labels
+    main="Survival dementia free by APOE e4 status") 
+    legend('bottomleft',
+       legend=levels(apoe_status_update$E4_allele),
+       col=c("#E69F00","#56B4E9"),
+       lty=1, #line type
+       lwd = 2, #line thickness
+       bty="n", #remove box
+       text.font = 1, #bold legend 
+       )
+    dev.off()
+  
+  ##GBA
+  #Read GBA genotypes
+    gba <- fread("merge4_GBA.txt", header = T)
+    names(gba)[1]<- "CHROM"
+   
+  #Read GBA mutation names
+    mutation_names <- fread("gba_mutation_names.txt",header=F)
+    names(mutation_names)[1] <- "ID"
+  
+    plink_data <- merge(gba, mutation_names, by = "ID")
+    dim(plink_data)
+    names(plink_data)[...] <- "Variant_ID" #change number in [] according to dim (should be number of columns)
+    plink_data$ID <- plink_data$Variant_ID 
+    plink_data$Variant_ID <- NULL
+         
+    gba_vcf <- subset(plink_data, select = -c(2:9))
+    gba_vcf[gba_vcf == "0/0"] <- 0
+    gba_vcf[gba_vcf == "0/1"] <- 1
+    gba_vcf[gba_vcf == "1/1"] <- 2
+    gba_vcf[gba_vcf == "./."] <- NA
+
+    gba_vcf_t <- setnames(gba_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          gba_vcf[, c('sample_id', ID)])[]
+
+    names(gba_vcf_t)[1] <- "IID"
+    gba_vcf_t[,2:3] <- lapply(gba_vcf_t[,2:3], as.numeric)
+
+  #Merge genotypes with clinical and PC files
+    gba_status <- clinical %>%
+        inner_join(PCs, by = c("IID")) %>%
+        inner_join(gba_vcf_t, by = "IID")
+        
+    gba_status_update <- gba_status %>% select(IID,event,timeToEvent,E365K,ageOnset,gender,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Create column with presence/absence of E365K and convert to factor
+    gba_status_update$E365K_2 <- ifelse(gba_status_update$E365K == 1 | gba_status_update$E365K == 2, "E365K carrier", "E365K non-carrier")
+    gba_status_update$E365K_2 <- factor(gba_status_update$E365K_2, levels=c("E365K non-carrier","E365K carrier"))
+    
+  #Recode gender and convert to factor
+    gba_status_update$gender <- ifelse(gba_status_update$gender == "Male" | gba_status_update$gender == "male" | gba_status_update$gender == "0",1,2)
+    gba_status_update$gender2 = factor(gba_status_update$gender2, levels=c("1","2"))
+    
+  #Survival analysis based on GBA E365K
+    m.cox2 <- coxph(Surv(timeToEvent, event) ~ E365K_2 + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=gba_status_update)
+    
+  #Plot Kaplan-Mayer curves
+    pdf("COMBINED_COHORTS_GBA_E365K_KM.pdf")
+    plot(survfit(Surv(timeToEvent, event) ~ E365K_2, data=gba_status_update),  
+    frame.plot = FALSE, #remove frame
+    mark.time = T, #censoring 
+    conf.int = F, #confidence intervals
+    xlim = c(0, 20), #x-axis limits
+    col=c("#E69F00","#56B4E9"),
+    lty=1, #solid line
+    lwd = 2, #line thickness
+    xlab="Years", 
+    ylab="Survival dementia free",
+    font.lab=2, #bold axis labels
+    main="Survival dementia free by GBA E365K status") 
+    legend('bottomleft',
+       legend=levels(gba_status_update$E365K_2),
+       col=c("#E69F00","#56B4E9"),
+       lty=1, #line type
+       lwd = 2, #line thickness
+       bty="n", #remove box
+       text.font = 1, #bold legend 
+       )
+      dev.off()
+
+  ##SNCA
+  #Read SNCA genotypes
+    snca <- fread("merge4_SNCA.txt", header = T)
+    names(snca)[1]<- "CHROM"
+  
+  #Read SNCA mutation names
+    mutation_names <- fread("SNCA_mutation_names.txt",header=F)
+    names(mutation_names)[1] <- "ID"
+    
+    plink_data <- merge(snca, mutation_names, by = "ID")
+    dim(plink_data)
+    names(plink_data)[...] <- "Variant_ID" #change number in [] according to dim (should be number of columns)
+    plink_data$ID <- plink_data$Variant_ID 
+    plink_data$Variant_ID <- NULL
+
+    snca_vcf <- subset(plink_data, select = -c(2:9))
+    snca_vcf[snca_vcf == "0/0"] <- 0
+    snca_vcf[snca_vcf == "0/1"] <- 1
+    snca_vcf[snca_vcf == "1/1"] <- 2
+    snca_vcf[snca_vcf == "./."] <- NA
+
+    snca_vcf_t <- setnames(snca_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          snca_vcf[, c('sample_id', ID)])[]
+
+    names(snca_vcf_t)[1] <- "IID"
+    
+  #Merge genotypes with clinical and PC files
+    snca_status <- clinical %>%
+      inner_join(PCs, by = c("IID")) %>%
+      inner_join(snca_vcf_t, by = "IID")
+      
+    snca_status_update <- snca_status %>% select(IID,event,timeToEvent,rs356219,rs11931074,rs7681440,rs7684318,rs7680557,ageOnset,gender,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Survival analysis based on SNCA STATUS for each SNP
+    rsid <- colnames(snca_status_update)[c(4:8)]
+
+    #recode genotypes
+      snca_status_update <- snca_status_update %>%
+        mutate_at(rsid, function(x) {
+        case_when(
+        between(x, 1, 2) ~ "carrier",
+        x == 0 ~ "non-carrier",
+        T ~ NA_character_
+        )
+      })
+
+    #convert to factor and relevel
+      for (i in rsid) {
+        snca_status_update[[i]] <- relevel(factor(snca_status_update[[i]]), ref = "non-carrier")
+      }
+
+    #recode gender and convert to factor 
+      snca_status_update$gender <- ifelse(snca_status_update$gender == "Male" | snca_status_update$gender == "male" | snca_status_update$gender == "0",1,2)
+      snca_status_update$gender = factor(snca_status_update$gender, levels=c("1","2"))
+      
+    #run survival models for each SNP 
+      sumtables <- lapply(rsid, function(i) {
+        iformula <- as.formula(sprintf("Surv(timeToEvent, event) ~ %s + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study", i))  
+        x <- coxph(iformula, data=snca_status_update, na.action=na.omit)
+        summary(x) 
+      })
+
+      conf <- lapply(rsid, function(i) {
+        iformula <- as.formula(sprintf("Surv(timeToEvent, event) ~ %s + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study", i))  
+        x <- coxph(iformula, data=snca_status_update, na.action=na.omit)
+        coxobj_summary <- summary(x) 
+        coxobj_summary$`conf.int`
+      })
+      
+  ##MAPT
+  #Read MAPT genotypes
+    mapt <- fread("merge4_MAPT.txt", header = T)
+    names(mapt)[1]<- "CHROM"
+  
+  #Read MAPT mutation names
+    mutation_names <- fread("MAPT_mutation_names.txt", header=F)
+    names(mutation_names)[2] <- "ID"
+       
+    plink_data <- merge(mapt, mutation_names, by = "ID")
+    dim(plink_data)
+    names(plink_data)[...] <- "Variant_ID" #change number in [] according to dim (should be number of columns)
+    plink_data$ID <- plink_data$Variant_ID 
+    plink_data$Variant_ID <- NULL
+
+    mapt_vcf <- subset(plink_data, select = -c(2:9))
+    mapt_vcf[mapt_vcf == "0/0"] <- 0
+    mapt_vcf[mapt_vcf == "0/1"] <- 1
+    mapt_vcf[mapt_vcf == "1/1"] <- 2
+    mapt_vcf[mapt_vcf == "./."] <- NA
+
+    mapt_vcf_t <- setnames(mapt_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          mapt_vcf[, c('sample_id', ID)])[]
+
+    mapt_vcf_t$MAPT <- with(mapt_vcf_t,ifelse(rs1800547 == "0", "H1/H1", #AA
+                             ifelse(rs1800547 == "1", "H1/H2", #AG
+                                    ifelse(rs1800547 == "2", "H2/H2",'NA')))) #GG
+
+    names(mapt_vcf_t)[1] <- "IID"
+
+   #Merge genotypes with clinical and PC files
+    mapt_status <- clinical %>%
+        inner_join(PCs, by = "IID") %>%
+        inner_join(mapt_vcf_t, by = "IID")
+
+    mapt_status_update <- mapt_status %>% select(IID,event,timeToEvent,ageOnset,gender,MAPT,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Create column with presence/absence of H1 (H1/H1 + H1/H2 vs. H2/H2)
+    mapt_status_update <- mapt_status_update %>% mutate(H1 = ifelse(str_detect(MAPT, "H1"), "H1", "H2"))
+    mapt_status_update$H1 <- factor(mapt_status_update$H1, levels=c("H2","H1")) #as factor
+    
+  #Recode gender and convert to factor
+    mapt_status_update$gender <- ifelse(mapt_status_update$gender == "Male" | mapt_status_update$gender == "male" | mapt_status_update$gender == "0",1,2)
+    mapt_status_update$gender = factor(mapt_status_update$gender, levels=c("1","2"))
+    
+  #Survival analysis based on MAPT H1 vs H2
+    m.cox3 <- coxph(Surv(timeToEvent, event) ~ H1 + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=mapt_status_update)
+
+  ##RIMS2
+  #Read RIMS2 genotypes
+    rims2 <- fread("merge4_RIMS2.txt", header = T)
+    names(rims2)[1] <- "CHROM"
+    rims2$ID <- "rs182987047"
+    
+    rims2_vcf <- subset(rims2, select = -c(1:2,4:9))
+    rims2_vcf[rims2_vcf == "0/0"] <- 0
+    rims2_vcf[rims2_vcf == "0/1"] <- 1
+    rims2_vcf[rims2_vcf == "1/1"] <- 2
+    rims2_vcf[rims2_vcf == "./."] <- NA
+
+    rims2_vcf_t <- setnames(rims2_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          rims2_vcf[, c('sample_id', ID)])[]
+
+    names(rims2_vcf_t)[1] <- "IID"
+    
+   #Merge genotypes with clinical and PC files
+    rims2_status <- clinical %>%
+      inner_join(PCs, by = c("IID")) %>%
+      inner_join(rims2_vcf_t, by = "IID")
+
+    rims2_status_update <- rims2_status %>% select(IID,event,timeToEvent,rs182987047,ageOnset,gender,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Convert to factor and relevel
+    rims2_status_update$rs182987047 <- factor(rims2_status_update$rs182987047, levels=c("0","1")) 
+
+  #Recode gender and convert to factor
+    rims2_status_update$gender <- ifelse(rims2_status_update$gender == "Male" | rims2_status_update$gender == "male" | rims2_status_update$gender == "0",1,2)
+    rims2_status_update$gender = factor(rims2_status_update$gender, levels=c("1","2"))
+   
+  #Survival analysis based on RIMS2 STATUS
+    m.cox4 <- coxph(Surv(timeToEvent, event) ~ rs182987047 + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=rims2_status_update)
+
+  ##TMEM108
+  #Read TMEM108 genotypes
+    tmem108 <- fread("merge4_TMEM108.txt", header = T)
+    names(tmem108)[1]<- "CHROM"
+    tmem108$ID<- "rs138073281"
+    
+    tmem108_vcf <- subset(tmem108, select = -c(1:2,4:9))
+    tmem108_vcf[tmem108_vcf == "0/0"] <- 0
+    tmem108_vcf[tmem108_vcf == "0/1"] <- 1
+    tmem108_vcf[tmem108_vcf == "1/1"] <- 2
+    tmem108_vcf[tmem108_vcf == "./."] <- NA
+
+    tmem108_vcf_t <- setnames(tmem108_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          tmem108_vcf[, c('sample_id', ID)])[]
+
+    names(tmem108_vcf_t)[1] <- "IID"
+
+  #Merge genotypes with clinical and PC files
+    tmem108_status <- clinical %>%
+        inner_join(PCs, by = c("IID")) %>%
+        inner_join(tmem108_vcf_t, by = "IID")
+
+    tmem108_status_update <- tmem108_status %>% select(IID,event,timeToEvent,rs138073281,ageOnset,gender,PC1,PC2,PC3,PC4,PC5,Study)
+
+  #Create column with presence/absence of rs138073281 and convert to factor
+    tmem108_status_update$rs138073281_status <- ifelse(tmem108_status_update$rs138073281 == "1" | tmem108_status_update$rs138073281 == "2", "rs138073281 carriers",
+                                            ifelse(tmem108_status_update$rs138073281 == "0", "rs138073281 non-carriers", NA))
+    tmem108_status_update$rs138073281_status = factor(tmem108_status_update$rs138073281_status_update, levels=c("rs138073281 non-carriers","rs138073281 carriers"))
+
+  #Recode gender and convert to factor
+    tmem108_status_update$gender <- ifelse(tmem108_status_update$gender == "Male" | tmem108_status_update$gender == "male" | tmem108_status_update$gender == "0",1,2)
+    tmem108_status_update$gender = factor(tmem108_status_update$gender, levels=c("1","2"))
+    
+  #Survival analysis based on TMEM108 STATUS
+    m.cox5 <- coxph(Surv(timeToEvent, event) ~ rs138073281_status + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=tmem108_status_update)
+
+  ##WWOX
+  #Read WWOX genotypes
+    wwox <- fread("merge4_WWOX.txt", header = T)
+    names(wwox)[1]<- "CHROM"
+    wwox$ID<- "rs8050111"
+    
+    wwox_vcf <- subset(wwox, select = -c(1:2,4:9))
+    wwox_vcf[wwox_vcf == "0/0"] <- 0
+    wwox_vcf[wwox_vcf == "0/1"] <- 1
+    wwox_vcf[wwox_vcf == "1/1"] <- 2
+    wwox_vcf[wwox_vcf == "./."] <- NA
+
+    wwox_vcf_t <- setnames(wwox_vcf[, data.table(t(.SD), keep.rownames=TRUE), .SDcols=-"ID"], 
+                          wwox_vcf[, c('sample_id', ID)])[]
+
+    names(wwox_vcf_t)[1] <- "IID"
+    
+  #Merge genotypes with clinical and PC files
+    wwox_status <- clinical %>%
+      inner_join(PCs, by = c("IID")) %>%
+      inner_join(wwox_vcf_t, by = "IID")
+      
+    wwox_status_update <- wwox_status %>% select(IID,event,timeToEvent,rs8050111,ageOnset,gender,PC1,PC2,PC3,PC4,PC5,Study)
+    
+  #Create column with presence/absence of rs8050111 and convert to factor
+    wwox_status_update$rs8050111_status <- ifelse(wwox_status_update$rs8050111 == "1" | wwox_status_update$rs8050111 == "2", "rs8050111 carriers",
+                                              ifelse(wwox_status_update$rs8050111 == "0", "rs8050111 non-carriers", NA))
+    wwox_status_update$rs8050111_status = factor(wwox_status_update$rs8050111_status, levels=c("rs8050111 non-carriers","rs8050111 carriers"))
+  
+  #Recode gender and convert to factor
+    wwox_status_update$gender <- ifelse(wwox_status_update$gender == "Male" | wwox_status_update$gender == "male" | wwox_status_update$gender == "0",1,2)
+    wwox_status_update$gender = factor(wwox_status_update$gender, levels=c("1","2"))
+    
+  #Survival analysis based on WWOX STATUS
+    m.cox6 <- coxph(Surv(timeToEvent, event) ~ rs8050111_status + gender + ageOnset + PC1 + PC2 + PC3 + PC4 + PC5 + Study, data=wwox_status_update)
+
+q("no")
+
+#END
+      
