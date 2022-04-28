@@ -1,0 +1,42 @@
+DIR=path_to_cohort_files
+COHORT=cohort_name
+
+#Filter and recode to raw format
+plink1.9 --bfile $DIR/${COHORT}_final \
+                --allow-no-sex \
+                --maf 0.01 \
+                --geno 0.05 \
+                --hwe 0.00000001 \
+                --exclude range exclusion_regions_${build}.txt \
+                --recode A \
+                --out $DIR/${COHORT}_SNPsDF_recodeA
+
+
+#Replace ${COHORT} with file prefix in the columncutter.py script and run the script chunkCreator.sh 
+nohup bash chunkCreator.sh &
+
+#Cox Proportional Hazard analysis
+#Run script 1_MAKE_GWAScript.sh (edit END=number of chunks generated in previous step) - used gender, AAO and PC1:5 as covariates
+sh 1_MAKE_GWASscript.sh
+
+#Run script 2_makecxphshellscript.sh (edit END=number of chunks generated in previous step)
+sh 2_makecxphshellscript.sh
+
+#This will generate a third script, 3_submitcxph_allscripts.sh
+nohup sh 3_submitcxph_allscripts.sh &
+
+
+#Merge results files 
+mkdir $DIR/${COHORT}/RESULTS
+
+#Copy results files to correct location (change nb to number of files generated)
+for n in {1..nb}; do
+mv $DIR/${COHORT}_DEMENTIA_cxphres_$n.txt DIR/${COHORT}/RESULTS/
+done
+
+cd $DIR/${COHORT}/RESULTS
+#Merge results files into a single file
+rename 's/\d+/sprintf "%03d", $&/ge' *.txt #add prefix "00" to order files correctly 
+
+#Run script 
+nohup sh merge.sh &
