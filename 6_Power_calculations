@@ -1,0 +1,48 @@
+R
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(survSNP)
+
+#Modelling power using fixed HR=2 (GHR), MAF=0.02 (raf) and time=4.5 (lm), and variable N and event rate
+ns<-seq(500,35550,by=1000) #N sequence
+erates<-c(0.0361,0.073,0.127) #event rates 
+
+res <- survSNP.power.table(GHR=2,ns,raf=0.02,erates,
+                          pilm=0.5,lm=4.5,
+                          model="additive",test="additive",
+                          alpha=0.00000005)
+                          
+res[,c("n","GHR","erate","raf","pow0")]
+
+res_trim <- res %>% 
+  mutate(power=pow0*100, event_rate=erate*100) %>% 
+  select(n,GHR,event_rate,raf,power)
+
+#Plot
+res_trim$event_rate <- as.factor(res_trim$event_rate)
+
+pdf("Power_Plots.pdf")  
+res_trim %>%
+  ggplot( aes(x=n, y=power, group=event_rate, color=event_rate)) +
+  geom_line() +
+  labs(x="Sample size (N)",
+       y="Power (%)") +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
+  scale_x_continuous(limits = c(500, 35500), breaks = seq(500, 35500, by = 3500)) +
+  geom_hline(yintercept=80, linetype="dashed", color = "black") +
+  scale_colour_manual(name = "Event rate (%)", 
+                      values = c("#E69F00","#56B4E9","#009E73")) +
+  theme(
+    legend.position = "none",
+    panel.border = element_blank(),
+    panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),
+    panel.background=element_blank(),
+    axis.line=element_line(colour = "black")
+  )
+dev.off()
+
+q("no")
+
+
