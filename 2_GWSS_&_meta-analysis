@@ -18,7 +18,7 @@ plink1.9 --bfile $DIR/${COHORT}_final \
 nohup bash chunkCreator.sh &
 
 #Cox Proportional Hazard model
-         #It requires the ${COHORT}_PCs.eigenvec file generated in 
+         #It requires the ${COHORT}_PCA.eigenvec file generated in step 1_Data_quality_control
          #A covariate file (${COHORT}_clinical.txt) is also necessary, which must contain the following columns IID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1) 
          #Used gender, AAO and PC1:5 as covariates
 
