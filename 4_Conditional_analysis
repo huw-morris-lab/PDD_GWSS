@@ -4,7 +4,7 @@
   #summary-level statistics from a meta-analysis GWAS 
   #plink binary files from a reference sample 
 #The entire AMP-PD dataset was used to generate a REFERENCE file using the QC steps decribed in step 1_Data_quality_control 
-#The reference file was then converted to build hg19 using liftOver tool
+#The reference file was then converted to build hg19 using the liftOver tool
 
 #PREPARE COJO FILE FROM THE SUMMARY STATISTICS (SNP A1 A2 freq b se p N)
 awk '{print $1"\t"$3"\t"$2"\t"$4"\t"$8"\t"$9"\t"$10"\t"$16}' SURVIVAL_DEMENTIA_META_ALL_COHORTS1.tbl > metal.ma
