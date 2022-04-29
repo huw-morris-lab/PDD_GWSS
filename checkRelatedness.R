@@ -5,6 +5,8 @@ my_packages <- c("ggplot2", "plinkQC")                       # Specify packages 
 not_installed <- my_packages[!(my_packages %in% installed.packages()[ , "Package"])]    
 if(length(not_installed)) install.packages(not_installed)                               # Install uninstalled packages
 
+#PlinkQC reference manual: https://cran.r-project.org/web/packages/plinkQC/plinkQC.pdf
+
 library(plinkQC)
 library(ggplot2)
 
