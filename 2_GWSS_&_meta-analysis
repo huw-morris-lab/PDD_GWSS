@@ -57,7 +57,7 @@ Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMEN
  
 #Run METAL
 #Edit script to change path and file names generated in previous step
-#The results file from AMP-PD cohort must be converted to build hg19 prior to this step
+#The positions in the METAL results file from AMP-PD cohort must be converted to build hg19 prior to this step
 
 metal metaanalysis_script.txt
 
