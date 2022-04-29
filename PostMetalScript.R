@@ -8,7 +8,7 @@ library(data.table)
 library(dplyr)
 library(tidyr)
 
-#Read in meta analysis results
+#Import meta-analysis results
 data <- fread(args[1])
 
 #Filter out SNPs with total sample size < N total
