@@ -80,7 +80,7 @@ plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3 \
 #QC post-imputation
 plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.updated_IDs \
   	 --autosome \
-         --exclude exclusion_regions_hg${build}.txt \
+         --exclude exclusion_regions_hg19.txt \
 	 --geno 0.01 \
 	 --hwe 1e-5 \
 	 --maf 0.01 \
@@ -88,3 +88,5 @@ plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.updated_IDs 
 	 --out $DIR/${COHORT}_final
 
 #THESE FILES ARE READY FOR ANALYSIS
+
+#END
