@@ -170,6 +170,7 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
 
 
 #ARRAY FILES READY FOR IMPUTATION AFTER THIS STEP (see 1.1_Imputation_array_data)
+#WGS FILES READY FOR ANALYSIS IN STEP 2 (2_
 
 #GENERATE PCs FOR COVARIATE FILE
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
@@ -189,15 +190,3 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
 plink1.9 --bfile $DIR/${COHORT}.snpqc.pruned \
    	 --pca \
    	 --out $DIR/${COHORT}.PCA
-
-#FINAL QC
-plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-	 --exclude range exclusion_regions_hg${build}.txt \
-	 --autosome \
-	 --geno 0.01 \
-  	 --hwe 1e-5 \
-  	 --maf 0.01 
-  	 --make-bed \
-  	 --out $DIR/${COHORT}_final
- 	 
-  #WGS FILES READY FOR ANALYSIS IN STEP 2
