@@ -49,7 +49,7 @@ plink1.9 --bfile $DIR/${COHORT}_final \
          --out $DIR/${COHORT}_final
          
 #Run R script to generate files for METAL
-Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMENTIA_cxphres_all.txt $DIR/${COHORT}_final.frq
+Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMENTIA_cxphres_all.txt $DIR/${COHORT}_final.frq $DIR/${COHORT}/RESULTS/${COHORT}_METAL_hg19.tab
  
 #Run METAL
 metal metaanalysis_script.txt
