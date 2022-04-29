@@ -1,188 +1,200 @@
-DIR=path_to_cohort_files
+DIR=path/to/directory/of/cohort/binary/files
 COHORT=cohort_name
  
 
 #EXTRACT PD CASES 
 plink1.9 --bfile $DIR/${COHORT} \
-  --keep PD_IDs.txt \
-  --make-bed \
-  --out $DIR/${COHORT}_PD
+ 	 --keep PD_IDs.txt \
+ 	 --make-bed \
+ 	 --out $DIR/${COHORT}_PD
+
 
 #SNP QC
 plink1.9 --bfile $DIR/${COHORT}_PD \
-  --geno 0.05 \
-  --maf 0.01 \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01
+ 	 --geno 0.05 \
+ 	 --maf 0.01 \
+ 	 --make-bed \
+ 	 --out $DIR/${COHORT}_PD_geno.95_maf.01
+
 
 #SAMPLE QC
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01 \
-  --missing \
-  --het \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01.sampleqc
+ 	 --missing \
+ 	 --het \
+ 	 --out $DIR/${COHORT}_PD_geno.95_maf.01.sampleqc
 
 #Run R script Heterozigosity.R (it will generate the file "samples_to_remove.txt")
 Rscript --vanilla --no-save Heterozigosity.R $DIR/${COHORT}_PD_geno.95_maf.01.sampleqc.het $DIR/${COHORT}_PD_geno.95_maf.01.sampleqc.imiss
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01 \
-  --remove samples_to_remove.txt \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD
+ 	 --remove samples_to_remove.txt \
+ 	 --make-bed \
+  	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD
+
 
 #SEX CHECK
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD \
- --check-sex 0.2 0.7 \
- --out sex_check
+ 	 --check-sex 0.2 0.7 \
+ 	 --out sex_check
 
 awk '($3=="0"||$5=="OK") {print $1"\t"$2}' sex_check.sexcheck > sex_samples_to_keep.txt
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD \
- --keep sex_samples_to_keep.txt \
- --make-bed \
- --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass
+ 	 --keep sex_samples_to_keep.txt \
+ 	 --make-bed \
+ 	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass
+
 
 #HARDY-WEINBERG EQUILIBRIUM
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass \
-  --hwe 0.00000001 \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe
+ 	 --hwe 0.00000001 \
+ 	 --make-bed \
+ 	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe
+
 
 #ANCESTRY CHECK
 #LiftOver HapMap dataset from hg19 to hg38 
 	#Create bed file for liftOver
 	 awk '{print "chr" $1, $4 -1, $4, $2}' HapMapIII_CGRCh37.bim > HapMapIII_CGRCh37_tolift.bed
 
-#Run liftOver 
-liftOver HapMapIII_CGRCh37_tolift.bed hg19ToHg38.over.chain.gz new_HapMap.bed HapMap_unmapped.bed
+	#Run liftOver 
+	liftOver HapMapIII_CGRCh37_tolift.bed hg19ToHg38.over.chain.gz new_HapMap.bed HapMap_unmapped.bed
 
-...
+	# Extract mapped variants
+	awk '{print $4}' new_HapMap.bed > HapMap_liftover_SNPs.txt
+	# Extract updated positions
+	awk '{print $4, $3}' new_HapMap.bed > HapMap_liftover.txt
 
+	#Update positions
+	plink1.9 --bfile HapMapIII_CGRCh37 \
+  		 --make-bed \
+  		 --out HapMap_hg38 \
+  		 --update-map HapMap_liftover.txt \
+  		 --extract HapMap_liftover_SNPs.txt
 
-plink1.9 --bfile HapMapIII_CGRCh37 \
-  --make-bed \
-  --out HapMap_hg38 \
-  --update-map HapMap_liftover.txt \
-  --extract HapMap_liftover_SNPs.txt
+	#Update SNP IDs to match ${COHORT} and remove duplicate SNPs
+	awk '{print $2"\t""chr"$1":"$4":"$6":"$5}' HapMap_hg38.bim > update_names.txt
 
-#Update SNP names to match ${COHORT} and remove duplicate SNPs
-awk '{print $2"\t""chr"$1":"$4":"$6":"$5}' HapMap3_build19/HapMap_hg38.bim > update_names.txt
+	plink1.9 --bfile HapMap_hg38 \
+  		 --update-name update_names.txt \
+ 		 --make-bed \
+		 --out HapMap_hg38_updated
 
-plink1.9 --bfile HapMap_hg38 \
-  --update-name update_names.txt \
-  --make-bed \
-  --out HapMap_hg38_updated
+	plink2 --bfile HapMap_hg38_updated \
+	       --rm-dup force-first \
+  	       --make-bed \
+               --out HapMap_hg38_updated
 
-plink2 --bfile HapMap_hg38_updated \
-  --rm-dup force-first \
-  --make-bed \
-  --out HapMap_hg38_updated
-
-#Merge HapMap and COHORTS
+#Merge HapMap and each COHORT
 plink2 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe \
- --autosome \
- --mac 2 \
- --snps-only 'just-acgt' \
- --make-bed \
- --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_auto_snps
+       --autosome \
+       --mac 2 \
+       --snps-only 'just-acgt' \
+       --make-bed \
+       --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_auto_snps
 
 plink2 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_auto_snps \
---rm-dup force-first \
---make-bed \
---out cohortPreMerge
+       --rm-dup force-first \
+       --make-bed \
+       --out cohortPreMerge
 
 plink2 --bfile cohortPreMerge \
-  --alt1-allele HapMap_hg38_updated.bim 5 2 \
-  --extract HapMap_hg38_updated.bim \
-  --update-map HapMap_hg38_updated.bim 4 2 \
-  --make-bed \
-  --out cohortToMergeHapmap 
+       --alt1-allele HapMap_hg38_updated.bim 5 2 \
+       --extract HapMap_hg38_updated.bim \
+       --update-map HapMap_hg38_updated.bim 4 2 \
+       --make-bed \
+       --out cohortToMergeHapmap 
 
 plink1.9 --bfile cohortToMergeHapmap \
-  --bmerge HapMap_hg38_updated \
-  --out trymerge 
+  	 --bmerge HapMap_hg38_updated \
+ 	 --out trymerge 
 
 plink1.9 --bfile trymerge \
-  --geno 0.01 \
-  --hwe 1e-10 \
-  --maf 0.01 \
-  --make-bed \
-  --out cohortAndHapmap
+  	 --geno 0.01 \
+ 	 --hwe 1e-10 \
+ 	 --maf 0.01 \
+ 	 --make-bed \
+ 	 --out cohortAndHapmap
+
+#Generate PCs
+plink1.9 --bfile cohortAndHapmap \
+ 	 --indep-pairwise 50 5 0.05 \
+ 	 --out prune 
 
 plink1.9 --bfile cohortAndHapmap \
-  --indep-pairwise 50 5 0.05 \
-  --out prune 
-
-plink1.9 --bfile cohortAndHapmap \
---extract prune.prune.in \
---make-bed \
---out pruned 
+	 --extract prune.prune.in \
+	 --make-bed \
+	 --out pruned 
 
 plink1.9 --bfile pruned \
---pca \
---out cohortAndHapmap_PCA 
+	 --pca \
+	 --out cohortAndHapmap_PCA 
 
 #Run R script to exclude non-europeans (it will generate the file "Individuals_to_keep_PCA.txt")
 Rscript --vanilla --no-save PC_EUR.R
 
+#Exclude non-europeans
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe \
-  --keep Individuals_to_keep_PCA.txt \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
+ 	 --keep Individuals_to_keep_PCA.txt \
+ 	 --make-bed \
+ 	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
+
 
 #EXCLUDE RELATIVES/DUPLICATED INDIVIDUALS
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca \
-  --indep-pairwise 50 5 0.05 \
-  --out prune
+ 	 --indep-pairwise 50 5 0.05 \
+ 	 --out prune
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca \
-  --extract prune.prune.in \
-  --genome --min 0.125 \
-  --missing \
-  --out IBD_check 
+ 	 --extract prune.prune.in \
+ 	 --genome --min 0.125 \
+ 	 --missing \
+  	 --out IBD_check 
   
 #Run R script 
 #Specify path to directory with QC results containing .imiss and .genome files generated in step above
-Rscript --no-save checkRelatedness.R $DIR
+Rscript --vanilla --no-save checkRelatedness.R $DIR
 
 #This generates the file IBD_DUPLICATES.txt with the individual in each pair of related individuals with the greater genotype missingness rate
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
-  --remove IBD_DUPLICATES.txt
+  	 --make-bed \
+  	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
+  	 --remove IBD_DUPLICATES.txt
 
 #Remove relatives/duplicates after merging all cohorts 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
-  --make-bed \
-  --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-  --remove IBD_DUPLICATES_MERGED_COHORTS.txt
+  	 --make-bed \
+  	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
+ 	 --remove IBD_DUPLICATES_MERGED_COHORTS.txt
 
-#GEBERATE PCs FOR COVARIATE FILE
+
+#GENERATE PCs FOR COVARIATE FILE
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-    --exclude range exclusion_regions_${build}.txt \
-    --geno 0.01 \
-    --maf 0.01 \
-    --hwe 0.00001 \
-    --autosome \
-    --indep-pairwise 1000 10 0.02 \
-    --out pruned_data 
+    	 --exclude range exclusion_regions_${build}.txt \
+   	 --geno 0.01 \
+   	 --maf 0.01 \
+   	 --hwe 0.00001 \
+   	 --autosome \
+  	 --indep-pairwise 1000 10 0.02 \
+         --out pruned_data 
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-    --extract pruned_data.prune.in \
-    --make-bed \
-    --out $DIR/${COHORT}.snpqc.pruned
+    	 --extract pruned_data.prune.in \
+   	 --make-bed \
+   	 --out $DIR/${COHORT}.snpqc.pruned
 
 plink1.9 --bfile $DIR/${COHORT}.snpqc.pruned \
-    --pca \
-    --out $DIR/${COHORT}.PCA
+   	 --pca \
+   	 --out $DIR/${COHORT}.PCA
 
 #REMOVE DUPLICATED SNPs
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
- --list-duplicate-vars ids-only suppress-first 
+ 	 --list-duplicate-vars ids-only suppress-first 
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-  --exclude plink.dupvar \
-  --make-bed \
-  --out $DIR/${COHORT}_final
-  
+  	 --exclude plink.dupvar \
+  	 --make-bed \
+  	 --out $DIR/${COHORT}_final
+ 	 
   #THESE FILES ARE READY FOR IMPUTATION (ARRAY) OR ANALYSIS (WGS) IN STEP 3
