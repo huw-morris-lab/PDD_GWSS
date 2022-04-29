@@ -170,7 +170,7 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
 
 
 #ARRAY FILES READY FOR IMPUTATION AFTER THIS STEP (see 1.1_Imputation_array_data)
-#WGS FILES READY FOR ANALYSIS IN STEP 2 (2_
+#WGS FILES READY FOR ANALYSIS IN STEP 2 (see 2_GWSS_&_meta-analysis)
 
 #GENERATE PCs FOR COVARIATE FILE
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
