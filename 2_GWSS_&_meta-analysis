@@ -1,4 +1,4 @@
-DIR=path_to_cohort_files
+DIR=path/to/directory/of/cohort/binary/files
 COHORT=cohort_name
 
 #CPH ANALYSIS
