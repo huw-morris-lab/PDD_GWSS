@@ -52,6 +52,7 @@ plink1.9 --bfile $DIR/${COHORT}_final \
 Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMENTIA_cxphres_all.txt $DIR/${COHORT}_final.frq $DIR/${COHORT}/RESULTS/${COHORT}_METAL_hg19.tab
  
 #Run METAL
+#Edit script to change path and file names generated in previous step
 metal metaanalysis_script.txt
 
 #Run R script for post-METAL filtering (generates the file metaanalysis_dementia.txt for FUMA)
