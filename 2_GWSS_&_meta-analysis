@@ -17,13 +17,17 @@ plink1.9 --bfile $DIR/${COHORT}_final \
 #Replace ${COHORT} with file prefix in the columncutter.py script and run the script chunkCreator.sh 
 nohup bash chunkCreator.sh &
 
-#Cox Proportional Hazard analysis
-#Run script 1_MAKE_GWAScript.sh (edit END=number of chunks generated in previous step) - used gender, AAO and PC1:5 as covariates
-sh 1_MAKE_GWASscript.sh
-#Run script 2_makecxphshellscript.sh (edit END=number of chunks generated in previous step)
-sh 2_makecxphshellscript.sh
-#This will generate a third script, 3_submitcxph_allscripts.sh
-nohup sh 3_submitcxph_allscripts.sh &
+#Cox Proportional Hazard model
+         #It requires the ${COHORT}_PCs.eigenvec file generated in 
+         #A covariate file (${COHORT}_clinical.txt) is also necessary, which must contain the following columns IID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1) 
+         #Used gender, AAO and PC1:5 as covariates
+
+         #Run script 1_MAKE_GWAScript.sh (edit END=number of chunks generated in previous step) 
+                  sh 1_MAKE_GWASscript.sh
+         #Run script 2_makecxphshellscript.sh (edit END=number of chunks generated in previous step) 
+                  sh 2_makecxphshellscript.sh
+         #This will generate a third script, 3_submitcxph_allscripts.sh 
+                  nohup sh 3_submitcxph_allscripts.sh &
 
 #Merge results files 
 mkdir $DIR/${COHORT}/RESULTS
