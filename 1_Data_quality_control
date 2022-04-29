@@ -162,7 +162,7 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
   	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
   	 --remove IBD_DUPLICATES.txt
 
-#Remove relatives/duplicates after merging all cohorts (see ...)
+#Remove relatives/duplicates after merging all cohorts (see 3_Candidate_Gene_Analysis)
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
   	 --make-bed \
   	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
@@ -190,3 +190,5 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
 plink1.9 --bfile $DIR/${COHORT}.snpqc.pruned \
    	 --pca \
    	 --out $DIR/${COHORT}.PCA
+	 
+#END
