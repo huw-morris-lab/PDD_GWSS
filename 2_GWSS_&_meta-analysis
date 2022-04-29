@@ -57,6 +57,8 @@ Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMEN
  
 #Run METAL
 #Edit script to change path and file names generated in previous step
+#The results file from AMP-PD cohort must be converted to build hg19 prior to this step
+
 metal metaanalysis_script.txt
 
 #Run R script for post-METAL filtering (generates the file metaanalysis_dementia.txt for FUMA)
@@ -66,7 +68,4 @@ Rscript --vanilla --no-save  PostMetalScript.R SURVIVAL_DEMENTIA_META_ALL_COHORT
 gzip metaanalysis_dementia.txt
 
 #END 
-  
-
-
-
+ 
