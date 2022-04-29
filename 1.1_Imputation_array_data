@@ -12,7 +12,7 @@ gunzip HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
 #Identify palindromic SNPs by running the script Remove_Palindromes.R  
 
 #Remove palindromic SNPs
-plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
+plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
          --exclude at-cg-snps.txt \
          --make-bed 
          --out $DIR/${COHORT}_FILTERED
