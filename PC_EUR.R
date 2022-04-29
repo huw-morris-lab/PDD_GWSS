@@ -1,17 +1,22 @@
 #!/usr/bin/env Rscript
 
+#Load libraries
 library(data.table)
 library(dplyr)
 
+#Import data
   data_eigen=fread("cohortAndHapmap_PCA.eigenvec")
   names(data_eigen)[1] <- "FID"
   fam=fread("cohortAndHapmap.fam")
   names(fam)[1] <- "FID"
   names(fam)[2] <- "IID"
-  merge_eigenvec.fam<- merge(data_eigen, fam, by=c("FID","IID")) 
+  merge_eigenvec.fam <- merge(data_eigen, fam, by=c("FID","IID")) 
   redux <- merge_eigenvec.fam[,c(1,2,16,3:12)]
 
-  EUR <- redux %>% filter(V6=="4" | V6=="12")
+#Select EUR (4=CEU & 12=TSI) from HapMap  
+  EUR <- redux %>% filter(V6=="4" | V6=="12") 
+
+#Calculate mean +/- SD for PC1:10 
   mean.pc1 <- mean(EUR$PC1) 
   mean.pc2 <- mean(EUR$PC2)
   mean.pc3 <- mean(EUR$PC3) 
@@ -33,6 +38,7 @@ library(dplyr)
   sd.pc9 <- sd(EUR$PC9)
   sd.pc10 <- sd(EUR$PC10)
 
+#Calculate 6SD from mean for PC1:10
   x.sd.pos.pc1 <- mean.pc1 + 6*sd.pc1
   x.sd.neg.pc1 <- mean.pc1 - 6*sd.pc1
   x.sd.pos.pc2 <- mean.pc2 + 6*sd.pc2
@@ -54,6 +60,7 @@ library(dplyr)
   x.sd.pos.pc10 <- mean.pc10 + 6*sd.pc10
   x.sd.neg.pc10 <- mean.pc10 - 6*sd.pc10
 
+#Subset individuals within 6SD of mean for PC1:10 
   redux_filtered <- subset(redux, redux$PC1< x.sd.pos.pc1 & redux$PC1> x.sd.neg.pc1  
                          & redux$PC2< x.sd.pos.pc2 & redux$PC2> x.sd.neg.pc2
                          & redux$PC3< x.sd.pos.pc3 & redux$PC3> x.sd.neg.pc3
@@ -65,8 +72,9 @@ library(dplyr)
                          & redux$PC9< x.sd.pos.pc9 & redux$PC9> x.sd.neg.pc9
                          & redux$PC10< x.sd.pos.pc10 & redux$PC10> x.sd.neg.pc10)
 
-  redux_filtered <- redux_filtered %>% filter (V6=="-9" | V6=="1" | V6=="2") #1359
+  redux_filtered <- redux_filtered %>% filter (V6=="-9" | V6=="1" | V6=="2") #Select only study samples
 
+#Export list of EUR to keep
   write.table(redux_filtered [,c(1,2)], "Individuals_to_keep_PCA.txt", sep=" ", row.names=FALSE, col.names=FALSE, quote=FALSE) #This creates a text file that keeps only columns 1 (individual ID) and 2 (family ID)
 
   q("no")
