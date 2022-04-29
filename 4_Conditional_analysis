@@ -1,6 +1,22 @@
 #Conditional analysis was run in GCTA-COJO (https://yanglab.westlake.edu.cn/software/gcta/#COJO)
-#Three files are needed for the analysis:
-  #list of SNPs to condition the analysis on (cond.snplist)
-  #summary-level statistics from a meta-analysis GWAS (file.ma)
+#Three files are needed for this analysis:
+  #SNP or list of SNPs on which the analysis is conditioned (cond.snplist)
+  #summary-level statistics from a meta-analysis GWAS 
   #plink binary files from a reference sample 
-#The entire AMP-PD dataset was used to generate a reference file using the QC steps decribed in step 1_
+#The entire AMP-PD dataset was used to generate a REFERENCE file using the QC steps decribed in step 1_Data_quality_control 
+#The reference file was then converted to build hg19 using liftOver tool
+
+#PREPARE COJO FILE FROM THE SUMMARY STATISTICS (SNP A1 A2 freq b se p N)
+awk '{print $1"\t"$3"\t"$2"\t"$4"\t"$8"\t"$9"\t"$10"\t"$16}' SURVIVAL_DEMENTIA_META_ALL_COHORTS1.tbl > metal.ma
+
+#CONDITION ON A SINGLE SNP 
+chr=chromosome_number
+snp_id=SNP on which conditional analysis is being performed
+
+gcta64 --bfile REFERENCE --cojo-file metal.ma --chr $chr --cojo-cond cond.snplist --out meta_cond_${snp_id}
+
+#END
+
+
+
+
