@@ -51,7 +51,9 @@ done
 
 #FILES ARE NOW READY TO BE UPLOADED TO THE IMPUTATION SERVER
 
-#After imputation is complete, download files from the server to $DIR and run script 
+
+#After imputation is complete, download files from the server to $DIR and run the script bcftools_script.sh
+#This will concatenate all chromosome files and filter for imputation score R2 >0.3
 sh bcftools_script.sh 
 
 #Convert to binary files
