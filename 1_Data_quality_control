@@ -162,19 +162,21 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
   	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
   	 --remove IBD_DUPLICATES.txt
 
-#Remove relatives/duplicates after merging all cohorts 
+#Remove relatives/duplicates after merging all cohorts (see ...)
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
   	 --make-bed \
   	 --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
  	 --remove IBD_DUPLICATES_MERGED_COHORTS.txt
 
 
+#ARRAY FILES READY FOR IMPUTATION AFTER THIS STEP (see 1.1_Imputation_array_data)
+
 #GENERATE PCs FOR COVARIATE FILE
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
     	 --exclude range exclusion_regions_${build}.txt \
    	 --geno 0.01 \
    	 --maf 0.01 \
-   	 --hwe 0.00001 \
+   	 --hwe 1e-5 \
    	 --autosome \
   	 --indep-pairwise 1000 10 0.02 \
          --out pruned_data 
@@ -188,13 +190,14 @@ plink1.9 --bfile $DIR/${COHORT}.snpqc.pruned \
    	 --pca \
    	 --out $DIR/${COHORT}.PCA
 
-#REMOVE DUPLICATED SNPs
+#FINAL QC
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
- 	 --list-duplicate-vars ids-only suppress-first 
-
-plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
-  	 --exclude plink.dupvar \
+	 --exclude range exclusion_regions_hg${build}.txt \
+	 --autosome \
+	 --geno 0.01 \
+  	 --hwe 1e-5 \
+  	 --maf 0.01 
   	 --make-bed \
   	 --out $DIR/${COHORT}_final
  	 
-  #THESE FILES ARE READY FOR IMPUTATION (ARRAY) OR ANALYSIS (WGS) IN STEP 3
+  #WGS FILES READY FOR ANALYSIS IN STEP 2
