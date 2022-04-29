@@ -10,7 +10,7 @@ for n in $(seq 0 $END); do
 
 	#Load genetic data
 	subset<- fread(\"$DIR/$COHORT/RESULTS/${COHORT}_file${n}.raw\")
-	#genetic data starts from column 7 of the raw file. 
+	#Keep IID and genetic data columns
 	subset<- subset[,-c(3,4,5,6)]
 
 	#Load clinical data
@@ -19,7 +19,7 @@ for n in $(seq 0 $END); do
 	#Load Principal Components
 	PCs <- fread(\"DIR/${COHORT}_PCA.eigenvec\")
 
-	#Select just the first 10 principal components
+	#Select first 10 principal components
 	PCs <- PCs %>%
 		select(V2:V12) %>%
 		rename(IID = V2,
@@ -34,8 +34,7 @@ for n in $(seq 0 $END); do
 			PC9 = V11,
 			PC10 = V12)
 	
-	#Inner join all datasets (only keep individuals with values in all
-	#Individuals missing the clinical data have been removed from the clinical dataset so they should be removed after the join
+	#Inner join all datasets 
 	TABLE <- clinical %>%
 		inner_join(PCs, by = \"IID\") %>%
 		inner_join(subset, by = \"IID\")
