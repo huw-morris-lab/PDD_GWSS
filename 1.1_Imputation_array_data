@@ -50,3 +50,31 @@ for chnum in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22};
 done
 
 #FILES ARE NOW READY TO BE UPLOADED TO THE IMPUTATION SERVER
+
+#After imputation is complete, download files from the server to $DIR and run script 
+sh bcftools_script.sh 
+
+#Convert to binary files
+plink1.9 --vcf $DIR/${COHORT}.HRC.allchromosomes.R2_0.3.vcf.gz \
+	--biallelic-only \
+	--double-id \
+	--allow-extra-chr 0 \
+	--allow-no-sex \
+	--make-bed \
+	--out $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3
+
+#Remove duplicate SNPs
+plink1.9 --bfile $DIR/${COHORT}.allchromosomes.converted.R2_0.3 \
+	--list-duplicate-vars ids-only suppress-first 
+
+#Update IDs in fam file to match original IDs 
+awk '{print $1,$2}' $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.fam > old_IDs.txt
+awk -F "_" '{print $2}' < old_IDs.txt > new_IDs.txt #separate columns by "_" and print only the second column 
+paste old_IDs.txt new_IDs.txt > update_ids.txt
+plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3 \
+	--update-ids update_ids.txt \
+	--allow-no-sex \
+	--make-bed \
+	--out $DIR/${COHORT}_final
+
+#THESE FILES ARE READY FOR ANALYSIS
