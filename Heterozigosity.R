@@ -4,10 +4,10 @@ args = commandArgs(trailingOnly=TRUE)
 library(data.table)
 library(tidyverse)
 
-#Read in sample heterozygosity table
+#Import heterozygosity file (.het)
 sample_het <- read.table(args[1], header = TRUE)
 
-#Read in sample call rate table
+#Import call rate file (.miss)
 sample_callrate <- read.table(args[2], header = TRUE)
 
 #Calculate proportion of heterozygosity
@@ -27,15 +27,15 @@ sample_het <- sample_het %>%
   mutate(remove_het = ifelse(het > 2*sd_het + mean_het, "remove",
                              ifelse(het < mean_het - 2*sd_het, "remove", "keep")))
 
-#Merge with callrate table
+#Merge 
 sample_stats <- sample_het %>% 
   left_join(sample_callrate, by = c("FID", "IID"))
 
-#Calculate genotyping rate (1 minus missing rate)
+#Calculate genotyping rate
 sample_stats <- sample_stats %>% 
   mutate(callrate = 1 - F_MISS)
 
-#Plot scatterplot
+#Plot 
 pdf("Heterozigosity_rate vs Missingness.pdf")
 ggplot(data = sample_stats, mapping = aes(x = het, y = callrate, color = remove_het)) +
   geom_point() +
@@ -47,7 +47,6 @@ samples_to_remove <- sample_stats %>%
   filter(remove_het == "remove" | callrate < 0.98) %>% 
   select(FID, IID)
 
-#Export as text file with just FID and IID
 write.table(samples_to_remove, "samples_to_remove.txt",
             quote=F, col.names = F, row.names = F)
 
