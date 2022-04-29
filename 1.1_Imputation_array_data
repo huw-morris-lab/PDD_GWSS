@@ -1,0 +1,21 @@
+DIR=path/to/directory/of/cohort/binary/files
+COHORT=cohort_name
+
+#Prepare files for the Michigan Imputation Server (https://imputationserver.sph.umich.edu/index.html#!)
+
+#Download tools
+wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.3.0.zip
+wget ftp://ngs.sanger.ac.uk/production/hrc/HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
+unzip HRC-1000G-check-bim-v4.3.0.zip
+gunzip HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
+
+#Identify palindromic SNPs by running Palindromic_SNPs.R script 
+
+
+#Remove palindromic SNPs
+plink --bfile /mnt/rreal/RDS/Raquel/fPD/PLINK_QC/PROBAND/PCA_caucasians_maf01_hwe --exclude at-cg-snps.txt --make-bed --out PROBAND_FILTERED
+
+
+#Create a separate vcf.gz file for each chromosome.
+#Variations must be sorted by genomic position.
+#GRCh37 or GRCh38 coordinates are required.
