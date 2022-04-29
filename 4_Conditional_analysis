@@ -1,0 +1,6 @@
+#Conditional analysis was run in GCTA-COJO (https://yanglab.westlake.edu.cn/software/gcta/#COJO)
+#Three files are needed for the analysis:
+  #list of SNPs to condition the analysis on (cond.snplist)
+  #summary-level statistics from a meta-analysis GWAS (file.ma)
+  #plink binary files from a reference sample 
+#The entire AMP-PD dataset was used to generate a reference file using the QC steps decribed in step 1_
