@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
 
-#Script to generate files for meta-analysis using METAL (https://genome.sph.umich.edu/wiki/METAL_Documentation)
+#Script to generate files ready for meta-analysis using METAL (https://genome.sph.umich.edu/wiki/METAL_Documentation)
 #args[1] = input CPH results file
 #args[2] = input frequency file
 #args[3] = output file
@@ -11,7 +11,7 @@ library(dplyr)
 library(data.table)
 library(tidyr)
 
-#Read in data
+#Import data
 data <- fread(args[1], header=TRUE)
 freq <- fread(args[2])
 
@@ -23,7 +23,7 @@ freq <- freq %>%
 #Sort by p value
 data <- data %>% arrange(Pvalue)
 
-#Split SNP name into chr, position and alleles
+#Split SNP ID into chr, position and alleles
 data_split <- data %>%
 	separate(SNP, into = c("chr", "bp", "REF", "ALT", "A1"))
   
@@ -44,17 +44,12 @@ data_split_noindels <- data_split %>%
 data_split_noindels_freq <- data_split_noindels %>%
 	mutate(SNP = paste(chr,bp,REF,ALT, sep = ":")) %>%
 	inner_join(freq, by = "SNP")
-
-#Check that alleles match (there should be no mismatches)
-data_split_noindels_freq %>%
-	filter(A1!=A1_freq) %>%
-	summarise(count = n())
   
 #Remove any A1 allele mismatches
 data_split_noindels_freq <- data_split_noindels_freq %>%
 	filter(A1==A1_freq)
   
-#Export in GRCh37/hg19 with chr:pos for METAL
+#Export for METAL
 export_METAL_hg19 <- data_split_noindels_freq %>%
 	mutate(SNP_new = paste(chr, bp, sep = ":")) %>%
 	select(SNP_new, effect, noneffect, Coeff, se, Pvalue, N, MAF) %>%
@@ -63,7 +58,6 @@ export_METAL_hg19 <- data_split_noindels_freq %>%
 		noneffect_allele = noneffect,
 		beta = Coeff)
 
-#Export for METAL
 fwrite(export_METAL_hg19, file=args[3] , quote = F, sep = "\t", row.names = F)
 
 q("no")
