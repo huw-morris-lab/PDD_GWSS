@@ -80,10 +80,12 @@ plink1.9 --bfile ${COHORT1_PATH} \
   
   #Run the R script to generate a list of related individuals to exclude (IBD_DUPLICATES.txt).
   Rscript --no-save /mnt/rreal/RDS/Raquel/Scripts/RScripts/checkRelatedness.R
+  
+ mv IBD_DUPLICATES.txt IBD_DUPLICATES_MERGED_COHORTS.txt
 
   ##Remove related/duplicate individuals 
   plink1.9 --bfile merge4 \
-    --remove IBD_DUPLICATES.txt \
+    --remove IBD_DUPLICATES_MERGED_COHORTS.txt \
     --make-bed \
     --out merge4_ibd
     
