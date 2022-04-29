@@ -16,7 +16,3 @@ snp_id=SNP on which conditional analysis is being performed
 gcta64 --bfile REFERENCE --cojo-file metal.ma --chr $chr --cojo-cond cond.snplist --out meta_cond_${snp_id}
 
 #END
-
-
-
-
