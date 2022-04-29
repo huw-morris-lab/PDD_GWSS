@@ -1,7 +1,7 @@
 DIR=path/to/directory/of/cohort/binary/files
 COHORT=cohort_name
 
-#Prepare files for the Michigan Imputation Server (https://imputationserver.sph.umich.edu/index.html#!)
+#PREPARE FILES FOR THE MICHIGAN IMPUTATION SERVER (https://imputationserver.sph.umich.edu/index.html#!)
 
 #Download tools
 wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.3.0.zip
@@ -9,13 +9,44 @@ wget ftp://ngs.sanger.ac.uk/production/hrc/HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sit
 unzip HRC-1000G-check-bim-v4.3.0.zip
 gunzip HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
 
-#Identify palindromic SNPs by running Palindromic_SNPs.R script 
-
+#Identify palindromic SNPs by running the script Remove_Palindromes.R  
 
 #Remove palindromic SNPs
-plink --bfile /mnt/rreal/RDS/Raquel/fPD/PLINK_QC/PROBAND/PCA_caucasians_maf01_hwe --exclude at-cg-snps.txt --make-bed --out PROBAND_FILTERED
+plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd \
+         --exclude at-cg-snps.txt \
+         --make-bed 
+         --out $DIR/${COHORT}_FILTERED
+         
+#Create a frequency file
+plink1.9 --bfile $DIR/${COHORT}_FILTERED \
+         --freq \
+         --out $DIR/${COHORT}
 
+#Execute script
+perl HRC-1000G-check-bim.pl -b $DIR/${COHORT}_FILTERED.bim -f $DIR/${COHORT}.frq -r HRC.r1-1.GRCh37.wgs.mac5.sites.tab -h
 
-#Create a separate vcf.gz file for each chromosome.
-#Variations must be sorted by genomic position.
-#GRCh37 or GRCh38 coordinates are required.
+#Run script generated in step above 
+sh Run-plink.sh
+
+#Create a vcf file for each chromosome
+FILENAME=$DIR/${COHORT}_FILTERED
+OUT=$DIR/${COHORT}_chr
+for chnum in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22};
+  do
+  plink1.9 --bfile ${FILENAME}-updated-chr$chnum --recode vcf --chr $chnum --out $OUT$chnum
+done
+
+#Create a sorted vcf.gz file using BCFtools
+FILENAME=$DIR/${COHORT}_chr
+for chnum in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22};
+  do
+  bcftools sort $FILENAME$chnum.vcf -Oz -o pre_impute_$FILENAME$chnum.vcf.gz
+done
+
+#CheckVCF (https://github.com/zhanxw/checkVCF)
+for chnum in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22};
+  do
+  python2.7 /usr/local/bin/checkVCF.py -r /usr/local/bin/hs37d5.fa -o $FILENAME$chnum pre_impute_$FILENAME$chnum.vcf.gz
+done
+
+#FILES ARE NOW READY TO BE UPLOADED TO THE IMPUTATION SERVER
