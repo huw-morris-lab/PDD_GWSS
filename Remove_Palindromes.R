@@ -5,7 +5,7 @@ args = commandArgs(trailingOnly=TRUE)
 library(data.table)
 library(dplyr) 
 
-# Removing palindromes (change path for each file)
+#Import bim file 
 bim = read.table(args[1], header=F)
 
 #Get indices of A/T and G/C SNPs
@@ -17,6 +17,6 @@ w = which((bim$V5=="A" & bim$V6=="T") |
 #Extract A/T and G/C SNPs
 at.cg.snps = bim[w,]
 
-#Save
+#Export
 write.table(at.cg.snps$V2,"at-cg-snps.txt", row.names = F, col.names = F, quote = F)
 q("no")
