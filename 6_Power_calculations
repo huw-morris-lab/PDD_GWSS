@@ -22,7 +22,7 @@ res_trim <- res %>%
 #Plot
 res_trim$event_rate <- as.factor(res_trim$event_rate)
 
-pdf("Power_Plots.pdf")  
+pdf("Power_Plot.pdf")  
 res_trim %>%
   ggplot( aes(x=n, y=power, group=event_rate, color=event_rate)) +
   geom_line() +
