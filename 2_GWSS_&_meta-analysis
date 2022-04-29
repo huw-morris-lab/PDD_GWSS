@@ -2,6 +2,7 @@ DIR=path/to/directory/of/cohort/binary/files
 COHORT=cohort_name
 
 #CPH ANALYSIS
+
 #Filter and recode to raw format
 plink1.9 --bfile $DIR/${COHORT}_final \
          --allow-no-sex \
@@ -41,5 +42,26 @@ nohup sh merge.sh &
 
 
 #META-ANALYSIS
+
+#Create frequency file
+plink1.9 --bfile $DIR/${COHORT}_final \
+         --freq \
+         --out $DIR/${COHORT}_final
+         
+#Run R script to generate files for METAL
+Rscript --vanilla --no-save MetalScript.R $DIR/${COHORT}/RESULTS/${COHORT}_DEMENTIA_cxphres_all.txt $DIR/${COHORT}_final.frq
+ 
+#Run METAL
+metal metaanalysis_script.txt
+
+#Run R script for post-METAL filtering (generates the file metaanalysis_dementia.txt for FUMA)
+Rscript --vanilla --no-save  PostMetalScript.R SURVIVAL_DEMENTIA_META_ALL_COHORTS1.tbl
+
+#Compress for FUMA
+gzip metaanalysis_dementia.txt
+
+#END 
+  
+
 
 
