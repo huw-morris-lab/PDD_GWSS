@@ -47,7 +47,7 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass \
   --make-bed \
   --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe
 
-#ANCESTRY 
+#ANCESTRY CHECK
 #LiftOver HapMap dataset from hg19 to hg38 
 	#Create bed file for liftOver
 	 awk '{print "chr" $1, $4 -1, $4, $2}' HapMapIII_CGRCh37.bim > HapMapIII_CGRCh37_tolift.bed
@@ -139,11 +139,12 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
   --genome --min 0.125 \
   --missing \
   --out IBD_check 
+  
+#Run R script 
+#Specify path to directory with QC results containing .imiss and .genome files generated in step above
+Rscript --no-save checkRelatedness.R $DIR
 
-...
-#Run R script (change the path to file in the script and save)
-#Generates the IBD_DUPLICATES.txt with the individual in each pair of related individuals with the greater genotype missingness rate
-Rscript --no-save checkRelatedness.R 
+#This generates the file IBD_DUPLICATES.txt with the individual in each pair of related individuals with the greater genotype missingness rate
 
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca \
   --make-bed \
@@ -156,7 +157,7 @@ plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca
   --out $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
   --remove IBD_DUPLICATES_MERGED_COHORTS.txt
 
-#Generate PCs for covariate file
+#GEBERATE PCs FOR COVARIATE FILE
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
     --exclude range exclusion_regions_${build}.txt \
     --geno 0.01 \
@@ -175,7 +176,7 @@ plink1.9 --bfile $DIR/${COHORT}.snpqc.pruned \
     --pca \
     --out $DIR/${COHORT}.PCA
 
-#Remove duplicated SNPs
+#REMOVE DUPLICATED SNPs
 plink1.9 --bfile $DIR/${COHORT}_PD_geno.95_maf.01_miss.98_het2SD_sexpass_hwe_pca_ibd2 \
  --list-duplicate-vars ids-only suppress-first 
 
