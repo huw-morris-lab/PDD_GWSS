@@ -72,9 +72,19 @@ awk '{print $1,$2}' $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.fam > old
 awk -F "_" '{print $2}' < old_IDs.txt > new_IDs.txt #separate columns by "_" and print only the second column 
 paste old_IDs.txt new_IDs.txt > update_ids.txt
 plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3 \
-	--update-ids update_ids.txt \
-	--allow-no-sex \
-	--make-bed \
-	--out $DIR/${COHORT}_final
+	 --update-ids update_ids.txt \
+	 --allow-no-sex \
+	 --make-bed \
+	 --out $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.updated_IDs
+	
+#QC post-imputation
+plink1.9 --bfile $DIR/${COHORT}.HRC.allchromosomes.converted.R2_0.3.updated_IDs \
+  	 --autosome \
+         --exclude exclusion_regions_hg${build}.txt \
+	 --geno 0.01 \
+	 --hwe 1e-5 \
+	 --maf 0.01 \
+	 --make-bed \
+	 --out $DIR/${COHORT}_final
 
 #THESE FILES ARE READY FOR ANALYSIS
