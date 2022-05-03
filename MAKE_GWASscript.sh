@@ -1,4 +1,6 @@
 #Written by Maryam Shoai (UCL)
+#Edit END with number of raw files generated 
+#Edit number of columns in the for-loop depending on where SNP columns start in TABLE
 
 END=
 for n in $(seq 0 $END); do
@@ -10,7 +12,7 @@ for n in $(seq 0 $END); do
 
 	#Load genetic data
 	subset<- fread(\"$DIR/$COHORT/RESULTS/${COHORT}_file${n}.raw\")
-	#Keep IID and genetic data columns
+	#Keep IID and genetic data columns (from column 7)
 	subset<- subset[,-c(3,4,5,6)]
 
 	#Load clinical data
@@ -45,13 +47,13 @@ for n in $(seq 0 $END); do
  
 	names(coefficients) <- c(\"SNP\",\"Coeff\", \"se\", \"Pvalue\", \"Cox.zphPVal\", \"N\", \"ov.lik.ratio\",\"logrank\", \"r2\" )
  
-	for (i in 18:ncol(TABLE)) {
+	for (i in 17:ncol(TABLE)) {
 	print(colnames(TABLE)[i])
-  	snp <- TABLE[,c(i,1:17)]
-	j= i-17
+  	snp <- TABLE[,c(i,1:16)]
+	j= i-16
 
 #Test Cox model - if there is an error then put NoConverge into results
-  	testCox = try(coxph(Surv(snp\$timeToEvent_dementia, snp\$event_dementia) ~ snp[,1] + snp\$age_onset + snp\$gender + snp\$PC1+ snp\$PC2 + snp\$PC3 + snp\$PC4 + snp\$PC5, data=snp), 
+  	testCox = try(coxph(Surv(snp\$timeToEvent, snp\$event) ~ snp[,1] + snp\$ageOnset + snp\$gender + snp\$PC1+ snp\$PC2 + snp\$PC3 + snp\$PC4 + snp\$PC5, data=snp), 
   	              silent = T)
   	
   	if(class(testCox)[1]==\"try-error\"){
@@ -60,7 +62,7 @@ for n in $(seq 0 $END); do
   	} else {
   	
   	#If Cox model is not an error, run and get the coefficients
-  	model.cox<- coxph(Surv(snp\$timeToEvent_dementia, snp\$event_dementia) ~ snp[,1] + snp\$age_onset + snp\$gender + snp\$PC1+ snp\$PC2 + snp\$PC3 + snp\$PC4 + snp\$PC5, data=snp)
+  	model.cox<- coxph(Surv(snp\$timeToEvent, snp\$event) ~ snp[,1] + snp\$ageOnset + snp\$gender + snp\$PC1+ snp\$PC2 + snp\$PC3 + snp\$PC4 + snp\$PC5, data=snp)
   	
   	testkmz <- try(kmz<- cox.zph(model.cox, transform = \"km\"), silent = T)
   	
