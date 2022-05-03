@@ -22,10 +22,10 @@ nohup bash chunkCreator.sh &
          #A covariate file (${COHORT}_clinical.txt) is also necessary, which must contain the following columns IID, gender, ageOnset, timeToEvent, event (PD = 0; PDD = 1) 
          #Used gender, AAO and PC1:5 as covariates
 
-         #Run script 1_MAKE_GWAScript.sh (edit END=number of chunks generated in previous step) 
-                  sh 1_MAKE_GWASscript.sh
-         #Run script 2_makecxphshellscript.sh (edit END=number of chunks generated in previous step) 
-                  sh 2_makecxphshellscript.sh
+         #Run script MAKE_GWAScript.sh (edit END=number of chunks generated in previous step) 
+                  sh MAKE_GWASscript.sh
+         #Run script makecxphshellscript.sh (edit END=number of chunks generated in previous step) 
+                  sh makecxphshellscript.sh
          #This will generate a third script, 3_submitcxph_allscripts.sh 
                   nohup sh 3_submitcxph_allscripts.sh &
 
