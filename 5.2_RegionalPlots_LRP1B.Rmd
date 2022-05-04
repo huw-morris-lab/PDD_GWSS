@@ -1,0 +1,219 @@
+---
+title: "LRP1B Regional association plots of eQTL/tQTL PsychEncode data against progression to dementia GWAS"
+author: "AlejandroMC, Regina Reynolds"
+date: "15/12/2022"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: yes
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+---
+
+
+
+We also interested in knowing if there is any variant from the LRP1B loci that regulates an alternative splicing. We could not perform coloc because Full iso/tQTL data from PsychEncode is not available. Unfortunately, only significant associations from the PsychEncode eQTL data are available, what makes coloc tool unappropiate due to the drastic reduction in sample size.
+
+However, we can still visualise the plotting even though we cannot run coloc
+
+In this section we generate the regional association plots for tQTL/GWAS, eQTL/GWAS. Note the iQTL/GWAS regional assoc plots could not be generated because LRP1B isoforms were not available on the iQTL dataset
+
+```{r }
+getwd()
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+.libPaths("/data/kronos/kronos/acarrasco/R_libs/")
+library(colochelpR)
+library(data.table)
+library(tidyverse)
+library(coloc)
+library(biomaRt)
+library(DT)
+library(ggpubr)
+library(SNPlocs.Hsapiens.dbSNP144.GRCh37)
+```
+
+Loading function for plotting 
+
+```{r}
+
+# Also, loading the Regina's function for plotting
+plot_coloc_hits <- function(coloc_hits, eQTL_GWAS_to_plot, facet_labels = NULL, figure_labels = NULL, theme_base_size = 10){
+  
+  plot_list <- vector(mode = "list", length = length(coloc_hits))
+  
+  # Setting facet labels
+  if(is.null(facet_labels)){
+    
+    labels <- c(pvalue_gwas = "pvalue_gwas", pvalue_eqtl = "pvalue_eqtl")
+    
+  } else{
+    
+    labels <- facet_labels 
+    
+  }
+  
+  # Setting figure labels
+  if(is.null(figure_labels)){
+    
+    figure_labels <- NULL
+    print(str_c("No figure labels provided, so no figure labels assigned."))
+    
+  } else{
+    
+    figure_labels <- figure_labels 
+    
+  }
+  
+  # Figure loop
+  for(i in 1:length(coloc_hits)){
+    
+    chr <- 
+      eQTL_GWAS_to_plot %>% 
+      dplyr::filter(gene %in% coloc_hits[i]) %>% 
+      .[["chr"]] %>% 
+      unique
+    
+    plot_list[[i]] <- 
+      eQTL_GWAS_to_plot %>% 
+      dplyr::filter(gene %in% coloc_hits[i]) %>% 
+      ggplot(aes(x = pos_mb, y = log_pval)) +
+      geom_point(size = 0.7, alpha = 0.3) +
+      facet_wrap(vars(Dataset, hgnc_symbol), ncol = 1, scale = "free", labeller=labeller(Dataset = labels)) +
+      labs(x = str_c("Chromosome ", chr, " position (Mb)"), y = "-log10(p-value)") +
+      theme_bw(base_size = theme_base_size) +
+      theme(panel.grid.major.y = element_blank(),
+            panel.grid.minor.y = element_blank())
+    
+  }
+  
+  ggpubr::ggarrange(plotlist = plot_list, 
+            # ncol = 2,
+            labels = figure_labels, 
+            align = "hv",
+            common.legend = TRUE, 
+            legend = "none")
+  
+}
+```
+
+Data loading / wrangling
+```{r}
+
+PsychEncode <- fread("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/DATA/PsychEncode/Full_hg19_cis-eQTL_rsID_MAF.txt")
+tQTL = fread("../DATA/DER-10c_hg19_tQTL.all.txt")
+iQTL = fread("../DATA/DER-10a_hg19_isoQTL.significant.txt")
+gwas <- fread("harmonised_progtoDemGWAS.txt")
+
+
+# Minor processing for tQTLs and iQTLs
+tQTL$transcript_id = gsub("\\..*", "", tQTL$transcript_id)
+iQTL$transcript_id = gsub("\\..*", "", iQTL$transcript_id)
+
+```
+
+Loading the coloc results from GWAS-PsychEncode
+
+```{r}
+results_psychEncode <- merge_coloc_summaries("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/progtoDementia_psychEncode",
+                                 add_signif_SNP = F, recursive = T, pattern = ".rda")
+
+mart = useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl") 
+
+mapping <- getBM(attributes = c("hgnc_symbol", "ensembl_gene_id"),  
+                           filters = "ensembl_gene_id",  
+                           values = results_psychEncode$Gene_2,  
+                           mart = mart)  
+
+results_psychEncode <- results_psychEncode %>% 
+  inner_join(mapping,by = c("Gene_2" = "ensembl_gene_id")) %>% relocate(hgnc_symbol, .after = Gene_2)   
+```
+
+
+Getting LRP1B over PsychEncode eQTL, tQTL, and iQTL df ( We could not find iQTL data for LRP1B on the latter)
+```{r}
+coloc_ens <- results_psychEncode %>% dplyr::filter(hgnc_symbol == "LRP1B")
+
+# We filter the PsychEncode eQTL data for LRP1B
+PsychEncode_filtered_eQTL <- PsychEncode %>% dplyr::filter(Gene %in% coloc_ens$Gene_2) 
+
+
+# Same for PsychEncode tQTL and iQTL data
+
+# Given the transcript id, we take the HGNC symbol and the ensembl gene_id
+ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+mapping <- getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "hgnc_symbol"),
+                 filters = "ensembl_gene_id", values = "ENSG00000168702",
+                 mart = ensembl)
+
+PsychEncode_filtered_tQTL  <- tQTL %>%
+  dplyr::filter(transcript_id %in% mapping$ensembl_transcript_id)
+PsychEncode_filtered_tQTL$hgnc_symbol = "LRP1B"
+PsychEncode_filtered_tQTL$Gene = "ENSG00000168702"
+
+# Unfortunately we do not have  
+PsychEncode_filtered_iQTL  <- iQTL %>%
+  dplyr::filter(transcript_id %in% mapping$ensembl_transcript_id)
+  
+
+```
+
+
+Now we join GWAS df with eQTL and tQTL dfs
+```{r}
+eQTL_Psych_GWAS_joined <- setNames(PsychEncode_filtered_eQTL %>% group_split(Gene), PsychEncode_filtered_eQTL %>% .[["Gene"]] %>% unique() %>% sort())  %>% 
+  lapply(., function(eQTL_gene_df) { colochelpR::join_coloc_datasets(df1 = gwas %>% dplyr::filter(!duplicated(SNP)), df2 = eQTL_gene_df, harmonise = F ) })
+
+dbSNP = SNPlocs.Hsapiens.dbSNP144.GRCh37
+PsychEncode_filtered_tQTL <- PsychEncode_filtered_tQTL %>% separate(SNP_id, into=c("CHR","BP"), remove=F) 
+PsychEncode_filtered_tQTL = PsychEncode_filtered_tQTL %>% dplyr::select(-strand) %>% convert_loc_to_rs(., dbSNP = dbSNP)
+
+tQTL_Psych_GWAS_joined <- setNames(PsychEncode_filtered_tQTL %>% group_split(Gene), PsychEncode_filtered_tQTL %>% .[["Gene"]] %>% unique() %>% sort())  %>% 
+  lapply(., function(eQTL_gene_df) { colochelpR::join_coloc_datasets(df1 = gwas %>% dplyr::filter(!duplicated(SNP)), df2 = eQTL_gene_df, harmonise = F ) })
+```
+
+Then we can plot it
+```{r}
+eQTL_GWAS <- eQTL_Psych_GWAS_joined %>% qdapTools::list_df2df() %>% dplyr::select(SNP, 
+    chr = CHR_1, pos = BP_1, gene = Gene_2, pvalue_gwas = p.value_1, pvalue_eqtl = p.value_2) %>%  
+        dplyr::inner_join(results_psychEncode %>% dplyr::select(gene = Gene_2, hgnc_symbol)) %>%  
+        tidyr::gather(key = "Dataset", value = "p.value", -SNP, -gene, -hgnc_symbol, -chr, -pos) %>% 
+        dplyr::mutate(pos_mb = as.numeric(pos) / 1000000, log_pval = -log10(p.value)) 
+
+tQTL_GWAS = tQTL_Psych_GWAS_joined %>% qdapTools::list_df2df() %>% dplyr::select(SNP, 
+    chr = CHR_1, pos = BP_1, gene = Gene_2, pvalue_gwas = p.value_1, pvalue_eqtl = nominal_pval_2) %>%  
+        dplyr::inner_join(results_psychEncode %>% dplyr::select(gene = Gene_2, hgnc_symbol)) %>%  # I should not do this inner joing for results_psychEncode. This res are eQTL-GWAS
+        tidyr::gather(key = "Dataset", value = "p.value", -SNP, -gene, -hgnc_symbol, -chr, -pos) %>% 
+        dplyr::mutate(pos_mb = as.numeric(pos) / 1000000, log_pval = -log10(p.value))
+
+
+plot_eQTL_GWAS <- plot_coloc_hits(coloc_hits = coloc_ens[["Gene_2"]], 
+                                  eQTL_GWAS_to_plot = eQTL_GWAS, 
+                                  facet_labels = c(pvalue_gwas = "toDementia_GWAS", 
+                                                   pvalue_eqtl="eQTL_PsychEncode")) 
+plot_tQTL_GWAS <- plot_coloc_hits(coloc_hits = coloc_ens[["Gene_2"]], 
+                                  eQTL_GWAS_to_plot = tQTL_GWAS, 
+                                  facet_labels = c(pvalue_gwas = "toDementia_GWAS", 
+                                                   pvalue_eqtl="tQTL_PsychEncode")) 
+pdf(file = "PLOTS/plot_eQTLGWAS.pdf", width = 8, height = 6)  
+plot_eQTL_GWAS
+dev.off()
+
+pdf(file = "PLOTS/plots_tQTLGWAS.pdf", width = 8, height = 6)  
+plot_tQTL_GWAS
+dev.off()
+
+plot_eQTL_GWAS
+plot_tQTL_GWAS
+```
+
+
