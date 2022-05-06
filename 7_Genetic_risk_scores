@@ -1,6 +1,6 @@
 #GENETIC RISK SCORE ANALYSIS
 
-#Summary statistics of the Kunkle et al. (2019) AD GWAS meta-analysis and the Nalls et al. (2019) PD GWAS were used to generate AD and PD GRS, respectively.
+#Summary statistics of the Kunkle et al. (2019) AD GWAS meta-analysis (stage1 + stage2) and the Nalls et al. (2019) PD GWAS were used to generate AD and PD GRS, respectively.
 #Score files used in the analysis consist of the lead genome-wide SNPs from the above GWAS studies.
 #Each score file (AD_ScoreFile.txt and PD_ScoreFile.txt) contains 3 columns: SNP_ID, Effect_allele and Estimate.
 #SNP_IDs in the score files must match SNP nomenclature in the study dataset.
@@ -9,10 +9,10 @@
 
 # 1. Set path to the working directory
 DIR=/path_to_directory/
-cd DIR
+cd $DIR
 
 # 2.Define path to location of imputed QC'ed binary files
-COHORT_PATH=/path_to_cohort/filename
+COHORT_PATH=/path_to_cohort_files/filename_prefix
 
 # 3.For each cohort, exclude palindromic SNPs from imputed QC'ed bim files
 
@@ -22,7 +22,7 @@ COHORT_PATH=/path_to_cohort/filename
   
   #Exclude palindromic SNPs 
   
-  COHORT_NAME=cohort_filename
+  COHORT_NAME=cohort_name
   
     plink1.9 --bfile ${COHORT_PATH} \
       --exclude at-cg-snps.txt \
