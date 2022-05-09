@@ -1,7 +1,7 @@
 ---
 title: "Progression to dementia GWAS against eQTLgene and PsychEncode datasets"
 author: "AlejandroMC, Regina Reynolds"
-date: "15/12/2022"
+date: "15/12/2021"
 output:
   html_document:
     df_print: paged
@@ -19,7 +19,7 @@ getwd()
 
 
 ```{r results="hide", warning=FALSE, message=FALSE}
-.libPaths("/data/kronos/kronos/acarrasco/R_libs/")
+.libPaths("/path/to/R_libs/")
 library(colochelpR)
 library(data.table)
 library(MafDb.1Kgenomes.phase3.hs37d5)
@@ -50,15 +50,15 @@ knitr::opts_chunk$set(echo = T, warning = F, message= F)
 We want to study if there is any variant among the progression to dementia GWAS hits that regulates the expression of any gene by using eQTLgene and PsychEncode eQTL data.
 To do so, we are going to perform a colocalization study using the coloc.ABF Bayesian approach that allows us to know whether there is any shared causal genetic variant between our quantitative trait GWAS and the preselected eQTL datasets. In addition, we will use the colochelpR package as a wrapper to do coloc.
 Of note, in colocalization analysis, we are not interested in knowing which is the causal variant, but whether there is an overlap between a given GWAS trait and any QTL df.
-We can accomplish this by testing the H4 null hypothesis that says is there is/are any SNP associated with both the progression to dementia GWAS and the regulation in expression of any gene. In other words, we want to know if any GWAS hit or set of GWAS hits are associated with progression to dementia quantitative phenotype through the disregulation on expression / alternative splicing of any gene, with a special focus on LRRP1.
+We can accomplish this by testing the H4 null hypothesis that says is there is/are any SNP associated with both the progression to dementia GWAS and the regulation in expression of any gene. In other words, we want to know if any GWAS hit or set of GWAS hits are associated with progression to dementia quantitative phenotype through the disregulation on expression / alternative splicing of any gene.
 
 # Data load
 
 # Loading GWAS
 ```{r eval=FALSE}
-survDementia = fread("/mnt/rreal/RDS/RDS/Raquel/Scherzer/META_ANALYSIS/NEW_2022/metaanalysis_dementia_new_2022.txt.gz")
+survDementia = fread("/path/to/metaanalysis_dementia.txt.gz") #file used to upload into FUMA
 head(survDementia)
-survDementia_raw_maf = fread("/mnt/rreal/RDS/RDS/Raquel/Scherzer/META_ANALYSIS/NEW_2022/SURVIVAL_DEMENTIA_META_4_COHORTS_NEW_2022v1.tbl")
+survDementia_raw_maf = fread("/path/to/metaanalysis_summary_statistics.tbl")
 
 ```
 
@@ -91,7 +91,7 @@ survDementia_rsID_vbeta <- survDementia_rsID_vbeta %>%
 
 
 # save
-fwrite(survDementia_rsID_vbeta, "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/harmonised_progtoDemGWAS.txt", quote = F, sep= "\t", col.names=T, row.names=F)
+fwrite(survDementia_rsID_vbeta, "harmonised_progtoDemGWAS.txt", quote = F, sep= "\t", col.names=T, row.names=F)
 ```
 
 
@@ -112,12 +112,12 @@ cat("total genes selected:", length(ensembl_gene_ids_overlapping_1Mb_window_hit)
 
 
 ```{r results="hide", warning = FALSE, message = FALSE, eval = FALSE}
-results_path = "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL"
+results_path = "path/to/RESULTS"
 results_path_GWAS_eQTL <- make_results_dir(results_path = results_path,
                                            folder_name = "progtoDementia_eQTLgene")
 # Path to the GWAS we load
-GWAS_path <- "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/harmonised_progtoDemGWAS.txt"
-eQTLgene_path <- "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/DATA/eQTLgen/Full_eQTLgen_rsID.MAF.txt"
+GWAS_path <- "path/to/harmonised_progtoDemGWAS.txt"
+eQTLgene_path <- "path/to/Full_eQTLgen_rsID.MAF.txt"
 eQTLgene <- fread(eQTLgene_path)
 
 df1_N = as.numeric(unique(survDementia_rsID_vbeta$TotalSampleSize))
@@ -160,12 +160,12 @@ for (index in seq_along(ensembl_gene_ids_overlapping_1Mb_window_hit)) {
 
 
 ```{r results="hide", warning = FALSE, message = FALSE, eval = FALSE}
-results_path = "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/"
+results_path = "path/to/RESULTS"
 results_path_GWAS_eQTL <- make_results_dir(results_path = results_path,
                                            folder_name = "progtoDementia_psychEncode")
 # Path to the GWAS we load
-GWAS_path <- "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/harmonised_progtoDemGWAS.txt"
-psychEnc_path <- "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/DATA/PsychEncode/Full_hg19_cis-eQTL_rsID_MAF.txt"
+GWAS_path <- "path/to/harmonised_progtoDemGWAS.txt"
+psychEnc_path <- "path/to/Full_hg19_cis-eQTL_rsID_MAF.txt"
 
 psychEncode <- fread(psychEnc_path)
 
@@ -226,7 +226,7 @@ We will set up a PP.H4 > 0.9 to consider the presence of a shared SNP between tr
 
 
 ```{r}
-results_eQTL <- merge_coloc_summaries("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/progtoDementia_eQTLgene",
+results_eQTL <- merge_coloc_summaries("path/to/progtoDementia_eQTLgene",
                                     add_signif_SNP = F, recursive = T, pattern = ".rda")
 
 
@@ -253,7 +253,7 @@ datatable(results_eQTL, rownames = FALSE,
 
 
 
-results_psychEncode <- merge_coloc_summaries("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/progtoDementia_psychEncode",
+results_psychEncode <- merge_coloc_summaries("/path/to/progtoDementia_psychEncode",
                                  add_signif_SNP = F, recursive = T, pattern = ".rda")
 
   #mart = useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
@@ -281,8 +281,6 @@ results_psychEncode %>%
 
 ## Is there any region with an H4 pp > 0.9 when doing coloc between eQTLgen and GWAS?
 
-No, we did not find any
-
 ```{r}
   # Showing the results with PP4 > 0.9
 results_eQTL %>% dplyr::filter(PP.H4.abf > 0.9) %>% 
@@ -295,8 +293,6 @@ results_eQTL %>% dplyr::filter(PP.H4.abf > 0.9) %>%
 
 ## Is there any region with an H4 pp > 0.9 when doing coloc between psychEncode and GWAS?
 
-No, we did nod find any
-
 ```{r}
 # Showing the results with PP4 > 0.9 
 results_psychEncode %>% dplyr::filter(PP.H4.abf > 0.9) %>% 
@@ -304,15 +300,6 @@ results_psychEncode %>% dplyr::filter(PP.H4.abf > 0.9) %>%
                 options = list(scrollX = TRUE),
                 class = 'white-space: nowrap')
 ```
-
-
-
-# Discussion
-
-We did not find any loci sharing causal variants between the GWAS and any of eQTLgen and eQTL data from PsychEncode
-
-For LRP1B, we could not find data of it in eQTL gene, ( you can see it yourself typinf the gee name on the datatable), and for PsychEncode, the H4 pp was really small, and the H3 PP > 0.95
-
 
 
 # Session Info
