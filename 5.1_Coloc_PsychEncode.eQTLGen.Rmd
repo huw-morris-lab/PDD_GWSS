@@ -28,6 +28,7 @@ library(coloc)
 library(biomaRt)
 library(SNPlocs.Hsapiens.dbSNP144.GRCh37)
 library(DT)
+library(R.utils)
 ```
 
 ```{r setup, include=FALSE}
@@ -56,9 +57,8 @@ We can accomplish this by testing the H4 null hypothesis that says is there is/a
 
 # Loading GWAS
 ```{r eval=FALSE}
-survDementia = fread("/path/to/metaanalysis_dementia.txt.gz") #file used to upload into FUMA
-head(survDementia)
-survDementia_raw_maf = fread("/path/to/metaanalysis_summary_statistics.tbl")
+survDementia = fread("/path/to/metaanalysis_dementia.txt.gz") #File used to upload into FUMA containg the columns: CHR, BP, rsID, non_effect, effect, pval, Effect, StdErr, HR, lower95, upper95 
+survDementia_raw_maf = fread("/path/to/metaanalysis_summary_statistics.tbl") #Output of METAL
 
 ```
 
@@ -215,7 +215,6 @@ for (index in seq_along(ensembl_gene_ids_overlapping_1Mb_window_hit)) {
 # Results 
 
 Coloc calculates the posterior probability (PP) for 5 different hypotheses:
-
 - H0: No association with either trait.
 - H1: Association with trait 1, not with trait 2.
 - H2: Association with trait 2, not with trait 1.
