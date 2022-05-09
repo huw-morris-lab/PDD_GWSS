@@ -55,7 +55,7 @@ survDementia = fread("/path/to/harmonised_progtoDemGWAS.txt")
 
 ```{r eval = FALSE }
 
-gtex_cortex_chr2 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr2.parquet")
+gtex_cortex_chr2 = arrow::read_parquet("/path/to/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr2.parquet")
 ```
 
 
