@@ -1,7 +1,7 @@
 ---
 title: "LRP1B Regional association plots of eQTL/tQTL PsychEncode data against progression to dementia GWAS"
 author: "AlejandroMC, Regina Reynolds"
-date: "15/12/2022"
+date: "15/12/2021"
 output:
   html_document:
     df_print: paged
@@ -14,11 +14,11 @@ output:
 
 
 
-We also interested in knowing if there is any variant from the LRP1B loci that regulates an alternative splicing. We could not perform coloc because Full iso/tQTL data from PsychEncode is not available. Unfortunately, only significant associations from the PsychEncode eQTL data are available, what makes coloc tool unappropiate due to the drastic reduction in sample size.
+We are also interested in knowing if there is any variant from the LRP1B loci that regulates alternative splicing. We could not perform coloc because full iso/tQTL data from PsychEncode is not available. Unfortunately, only significant associations from the PsychEncode eQTL data are available, which makes coloc tool inappropiate due to the drastic reduction in sample size.
 
-However, we can still visualise the plotting even though we cannot run coloc
+However, we can still visualise the plotting even though we cannot run coloc.
 
-In this section we generate the regional association plots for tQTL/GWAS, eQTL/GWAS. Note the iQTL/GWAS regional assoc plots could not be generated because LRP1B isoforms were not available on the iQTL dataset
+In this section we generate the regional association plots for tQTL/GWAS, eQTL/GWAS. Note the iQTL/GWAS regional assoc plots could not be generated because LRP1B isoforms were not available on the iQTL dataset.
 
 ```{r }
 getwd()
@@ -31,7 +31,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-.libPaths("/data/kronos/kronos/acarrasco/R_libs/")
+.libPaths("/path/to/R_libs/")
 library(colochelpR)
 library(data.table)
 library(tidyverse)
@@ -46,7 +46,7 @@ Loading function for plotting
 
 ```{r}
 
-# Also, loading the Regina's function for plotting
+# Loading function for plotting
 plot_coloc_hits <- function(coloc_hits, eQTL_GWAS_to_plot, facet_labels = NULL, figure_labels = NULL, theme_base_size = 10){
   
   plot_list <- vector(mode = "list", length = length(coloc_hits))
@@ -109,7 +109,7 @@ plot_coloc_hits <- function(coloc_hits, eQTL_GWAS_to_plot, facet_labels = NULL, 
 Data loading / wrangling
 ```{r}
 
-PsychEncode <- fread("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/DATA/PsychEncode/Full_hg19_cis-eQTL_rsID_MAF.txt")
+PsychEncode <- fread("/path/to/PsychEncode/Full_hg19_cis-eQTL_rsID_MAF.txt")
 tQTL = fread("../DATA/DER-10c_hg19_tQTL.all.txt")
 iQTL = fread("../DATA/DER-10a_hg19_isoQTL.significant.txt")
 gwas <- fread("harmonised_progtoDemGWAS.txt")
@@ -124,7 +124,7 @@ iQTL$transcript_id = gsub("\\..*", "", iQTL$transcript_id)
 Loading the coloc results from GWAS-PsychEncode
 
 ```{r}
-results_psychEncode <- merge_coloc_summaries("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/progtoDementia_psychEncode",
+results_psychEncode <- merge_coloc_summaries("/path/to/progtoDementia_psychEncode",
                                  add_signif_SNP = F, recursive = T, pattern = ".rda")
 
 mart = useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl") 
