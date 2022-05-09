@@ -1,22 +1,19 @@
 ---
 title: "gtexV8_LRP1B_APOE"
 author: "AMCalejandro"
-date: "22/2/2022"
+date: "22/2/2021"
 output: html_document
 ---
 
 # Description.
 
-Transcriptome analysese have previously revealed complexity in regulation of alternative splicing (AS), event normally controlled by genetic variants.
-In this new colocalization, we aim to identify whether our variants within LRP1B can be interpreted as cis-acting splicing quantitative trait loci (sQTL), what could lead us to thinkg that a specific LRP1B mRNA isoform is linked to the progression to dementia phenotype.
-
-To do so, we are going to make use of sQTL data from GTEX_V8.
+Transcriptome analysis have previously revealed complexity in regulation of alternative splicing (AS), an event normally controlled by genetic variants. In this new colocalization, we aim to identify whether variants within LRP1B can be interpreted as cis-acting splicing quantitative trait loci (sQTL). To do so, we are going to make use of sQTL data from GTEX_V8.
 
 # Loading libraries
 
 ```{r echo=FALSE, eval = F}
 
-.libPaths("/mnt/rreal/RDS/RDS/acarrasco/R_libs/")
+.libPaths("/path/to/R_libs/")
 library(arrow)
 library(tidyverse)
 library(data.table)
@@ -29,7 +26,7 @@ library(coloc)
 ```
 
 ```{r results="hide", warning=FALSE, message=FALSE}
-.libPaths("/data/kronos/kronos/acarrasco/R_libs/")
+.libPaths("/path/to/R_libs/")
 library(colochelpR)
 library(data.table)
 library(tidyverse)
@@ -57,22 +54,19 @@ knitr::opts_chunk$set(echo = T, warning = F, message= F)
 ```
 
 # Data loading in memory
-
-Of note, since we are focused on LRP1B, I will do the analysis over chr3 only. 
-GTEX_V8 data is in parquet format, easily readable from C++ based arrow lib. Data is splitted and chromosomes and there are many tissues.
-In other words, there are too many files that requires some work for me ( ie. merging by tissue, do some wrangling over certain columns,...)
-For now, let's just going to explore chr3 gtex_v8_sQTL_Cortex EUR ancestry whole data.
+Since we are focused on LRP1B, I will do the analysis over chr2 only. 
+GTEX_V8 data is in parquet format, easily readable from C++ based arrow lib. We are just going to explore chr2 gtex_v8_sQTL_Cortex EUR ancestry whole data.
 
 ```{r}
-# We load the previously harmonised df of Raquel's GWAS ( ie varbeta derived, SNP names consistent with QTL df,...)
+# We load the previously harmonised GWAS df 
 # For more information on the processing steps, please ask
-survDementia = fread("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/DATA/Raquel_LRP1B_progToDementia/harmonised_progtoDemGWAS.txt")
+survDementia = fread("/path/to/harmonised_progtoDemGWAS.txt")
 ```
 
 ```{r eval = FALSE }
 
-gtex_cortex_chr3 = arrow::read_parquet("/mnt/rreal/RDS/RDS/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr3.parquet")
-gtex_cortex_chr19 = arrow::read_parquet("/mnt/rreal/RDS/RDS/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr19.parquet")
+gtex_cortex_chr3 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr3.parquet")
+gtex_cortex_chr19 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr19.parquet")
 ```
 
 
@@ -119,7 +113,7 @@ gtex_cortex_merged <- gtex_cortex_merged %>%
 ```
 
 ```{r echo=FALSE}
-gtex_cortex_merged = fread("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt")
+gtex_cortex_merged = fread("/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt")
 ```
 
 
@@ -135,8 +129,7 @@ tmp %>% group_by(Gene, SNP) %>% dplyr::summarise(count = n()) %>% as.data.frame
 
 # Getting the genes in +-1MB window
 
-Even though I am particularly interested in LRP1B and APOE, since this is pretty much automates, let's have a look at
-the coloc PPs for each gene within +-1MB from LRP1B and APOE lead SNPs.
+Let's have a look at the coloc PPs for each gene within +-1MB from LRP1B and APOE lead SNPs
 ```{r}
 ensembl_gene_ids_overlapping_1Mb_window_hit <- survDementia %>% colochelpR::get_genes_within_1Mb_of_signif_SNPs(pvalue_column="p.value",
                                                                                                                 CHR_column="CHR",
@@ -149,17 +142,17 @@ ensembl_gene_ids_overlapping_1Mb_window_hit_sQTLavail =
 
 
 ```{r results="hide", warning = FALSE, message = FALSE, eval = FALSE}
-results_path = "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/RESULTS_sQTL_GTEX_CORTEX"
+results_path = "/path/to/RESULTS_sQTL_GTEX_CORTEX"
 results_path_GWAS_sQTL <- make_results_dir(results_path = results_path,
                                            folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR3.CHR19")
-gwas_path = "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/DATA/Raquel_LRP1B_progToDementia/harmonised_progtoDemGWAS_V2.txt"
-gtex_cortex_path <- "/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt"
+gwas_path = "/path/to/harmonised_progtoDemGWAS_V2.txt"
+gtex_cortex_path <- "/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt"
 
 # GWAS N
 df1_N = as.numeric(unique(survDementia$TotalSampleSize))
 
 # Figurint out GTEX_V8 N
-gtex_cortex_covars = fread("/mnt/rreal/RDS/RDS/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_covariates/Brain_Cortex.v8.EUR.covariates.txt")
+gtex_cortex_covars = fread("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_covariates/Brain_Cortex.v8.EUR.covariates.txt")
 
 # Getting the GENES that are present in the sQTL data
 # Of note, sQTL data for LRP1B is not avail.
@@ -213,18 +206,16 @@ for (index in seq_along(ensembl_gene_ids_overlapping_1Mb_window_hit_sQTLavail)) 
 # Results 
 
 Coloc calculates the posterior probability (PP) for 5 different hypotheses:
-
 - H0: No association with either trait.
 - H1: Association with trait 1, not with trait 2.
 - H2: Association with trait 2, not with trait 1.
 - H3: Association with trait 1 and 2, two independent SNPs.
 - H4: Association with trait 1 and trait 2, one shared SNP.
-
 We will set up a PP.H4 > 0.9 to consider the presence of a shared SNP between traits
 
 
 ```{r}
-results_sQTL <- merge_coloc_summaries("/mnt/rreal/RDS/RDS/acarrasco/COLLABS/FOR_RAQUEL/RESULTS_sQTL_GTEX_CORTEX/progtoDementia_sQTL_GTEX_CORTEX_CHR3.CHR19/",
+results_sQTL <- merge_coloc_summaries("/path/to/RESULTS_sQTL_GTEX_CORTEX/progtoDementia_sQTL_GTEX_CORTEX_CHR3.CHR19/",
                                     add_signif_SNP = F, recursive = T, pattern = ".rda")
 
   #mart = useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
