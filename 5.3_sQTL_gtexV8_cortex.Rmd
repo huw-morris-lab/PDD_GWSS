@@ -43,7 +43,7 @@ GTEX_V8 data is in parquet format, easily readable from C++ based arrow lib.
 # We load the previously harmonised GWAS df 
 # For more information on the processing steps, please ask
 
-survDementia = fread("/path_to/harmonised_progtoDemGWAS_V3.txt")
+survDementia = fread("/path_to/harmonised_progtoDemGWAS.txt")
 
 # Parquet format gtex cortex chrom2
 gtex_cortex_chr2 = arrow::read_parquet("/path_to/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr2.parquet")
@@ -100,7 +100,7 @@ gtex_cortex_chr2_processed_nodups = fread("/path_to/GTEX_V8/sQTL_EUR_CORTEX/gtex
 results_path = "/path_to/RESULTS_sQTL_GTEX_CORTEX"
 results_path_GWAS_sQTL <- make_results_dir(results_path = results_path,
                                            folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR2_LRP1B")
-gwas_path = "/path_to/harmonised_progtoDemGWAS_V3.txt"
+gwas_path = "/path_to/harmonised_progtoDemGWAS.txt"
 gtex_cortex_path <- "/path_to/gtex_proccessed_CORTEX_chr2.noDUPs_COLOCformatOK.txt"
 
 # GWAS N
