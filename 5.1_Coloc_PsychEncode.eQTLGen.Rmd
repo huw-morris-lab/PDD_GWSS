@@ -165,7 +165,7 @@ results_path_GWAS_eQTL <- make_results_dir(results_path = results_path,
                                            folder_name = "progtoDementia_psychEncode")
 # Path to the GWAS we load
 GWAS_path <- "path/to/harmonised_progtoDemGWAS.txt"
-psychEnc_path <- "path/to/Full_hg19_cis-eQTL_rsID_MAF.txt"
+psychEnc_path <- "path/to/PsychEncode/Full_hg19_cis-eQTL_rsID_MAF.txt"
 
 psychEncode <- fread(psychEnc_path)
 
