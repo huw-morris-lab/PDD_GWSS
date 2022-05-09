@@ -11,22 +11,12 @@ Transcriptome analysis have previously revealed complexity in regulation of alte
 
 # Loading libraries
 
-```{r echo=FALSE, eval = F}
-
-.libPaths("/path/to/R_libs/")
-library(arrow)
-library(tidyverse)
-library(data.table)
-library(colochelpR)
 #library(MafDb.1Kgenomes.phase3.hs37d5)
-#library(SNPlocs.Hsapiens.dbSNP144.GRCh38)
-library(biomaRt)
-library(DT)
-library(coloc)
 ```
 
 ```{r results="hide", warning=FALSE, message=FALSE}
 .libPaths("/path/to/R_libs/")
+library(arrow)
 library(colochelpR)
 library(data.table)
 library(tidyverse)
@@ -65,43 +55,30 @@ survDementia = fread("/path/to/harmonised_progtoDemGWAS.txt")
 
 ```{r eval = FALSE }
 
-gtex_cortex_chr3 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr3.parquet")
-gtex_cortex_chr19 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr19.parquet")
+gtex_cortex_chr2 = arrow::read_parquet("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_all_associations/Brain_Cortex.v8.EUR.sqtl_allpairs.chr2.parquet")
 ```
 
 
 # GTEX wrangling
 
-To start with, we are going to use data from cortex.
-Again, since all the GTEX_V8 is unprocessed, I will merely load data from chr3 (LRP1B) and chr19 (APOE)
+We are going to use data from cortex.
+Again, since all the GTEX_V8 is unprocessed, I will merely load data from chr2 (LRP1B) 
 ```{r eval = FALSE}
 # Minor modification to set SNP columnd to CHR:POS variable
 survDementia = survDementia %>% dplyr::rename(SNP_RSID = SNP, SNP = chrpos)
 
-gtex_cortex_chr3 = gtex_cortex_chr3 %>% 
+gtex_cortex_chr2 = gtex_cortex_chr2 %>% 
   mutate(phenotype_id = stringr::str_extract(phenotype_id, pattern="ENSG.*(?=\\.)")) %>% # Using look ahead to match from ENSG up to the dot
   mutate_at("variant_id", ~gsub("chr","", .)) %>% 
   separate(variant_id, into = c("CHR", "BP", "REF", "ALT", "BUILD")) %>%
   unite("chrpos", CHR:BP, sep = ":", remove = F)
-
-gtex_cortex_chr19 = gtex_cortex_chr19 %>% 
-  mutate(phenotype_id = stringr::str_extract(phenotype_id, pattern="ENSG.*(?=\\.)")) %>% # Using look ahead to match from ENSG up to the dot
-  mutate_at("variant_id", ~gsub("chr","", .)) %>% 
-  separate(variant_id, into = c("CHR", "BP", "REF", "ALT", "BUILD")) %>%
-  unite("chrpos", CHR:BP, sep = ":", remove = F)
-
-# For phenotype_id
-# Example input chr2:41627:45440:clu_36328:ENSG00000184731.5
-# Example output ENSG00000184731 
-
-gtex_cortex_merged = rbind(gtex_cortex_chr3, gtex_cortex_chr19)
 
 # Then, the strategy I am going to follow is:
-# 1. Group by EMSEMBLID-SNP pair
+# Group by EMSEMBLID-SNP pair
 # Calculate the average Pval
 # I decided to set the p.value to pval_nominal.
 # Ideally this would be pval_nominal_Average
-gtex_cortex_merged <- gtex_cortex_merged %>% 
+gtex_cortex_chr2 <- gtex_cortex_chr2 %>% 
   filter(!is.na(pval_nominal)) %>%
   group_by(phenotype_id, chrpos) %>% 
   arrange(pval_nominal) %>% # To make sure I keep the record with the lowest pval_nominal in case whe need it
@@ -109,27 +86,15 @@ gtex_cortex_merged <- gtex_cortex_merged %>%
   distinct(phenotype_id, chrpos, .keep_all=T) %>%
   dplyr::rename(SNP = chrpos, p.value = pval_nominal)
 
-
 ```
 
 ```{r echo=FALSE}
-gtex_cortex_merged = fread("/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt")
+gtex_cortex_chr2 = fread("/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr2_noDUPS_V2.txt")
 ```
-
-
-```{r}
-
-head(gtex_cortex_merged)
-# For each ENSEMBLID-SNP pair, we have repeated measures. I believe that is, for each patient, ENSEMBLID-SNP sQTL data was recorded
-cat("Showing the data we are working with. Note sQTL GTEX data has been processed to retrieve one unique Gene-SNP pair")
-tmp = gtex_cortex_merged %>% filter(SNP == "3:11859" | SNP == "19:91015")
-tmp %>% group_by(Gene, SNP) %>% dplyr::summarise(count = n()) %>% as.data.frame
-```
-
 
 # Getting the genes in +-1MB window
 
-Let's have a look at the coloc PPs for each gene within +-1MB from LRP1B and APOE lead SNPs
+Let's have a look at the coloc PPs for each gene within +-1MB from LRP1B lead SNPs
 ```{r}
 ensembl_gene_ids_overlapping_1Mb_window_hit <- survDementia %>% colochelpR::get_genes_within_1Mb_of_signif_SNPs(pvalue_column="p.value",
                                                                                                                 CHR_column="CHR",
@@ -137,16 +102,16 @@ ensembl_gene_ids_overlapping_1Mb_window_hit <- survDementia %>% colochelpR::get_
                                                                                                                 mart=37)
 # Getting the genes present in GTEX
 ensembl_gene_ids_overlapping_1Mb_window_hit_sQTLavail = 
-  intersect(gtex_cortex_merged$Gene, ensembl_gene_ids_overlapping_1Mb_window_hit)
+  intersect(gtex_cortex_chr2$Gene, ensembl_gene_ids_overlapping_1Mb_window_hit)
 ```
 
 
 ```{r results="hide", warning = FALSE, message = FALSE, eval = FALSE}
 results_path = "/path/to/RESULTS_sQTL_GTEX_CORTEX"
 results_path_GWAS_sQTL <- make_results_dir(results_path = results_path,
-                                           folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR3.CHR19")
+                                           folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR2")
 gwas_path = "/path/to/harmonised_progtoDemGWAS_V2.txt"
-gtex_cortex_path <- "/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr3chr19_noDUPS_V2.txt"
+gtex_cortex_path <- "/path/to/DATA/GTEX_V8/sQTL_EUR_CORTEX/gtex_proccessed_chr2_V2.txt"
 
 # GWAS N
 df1_N = as.numeric(unique(survDementia$TotalSampleSize))
@@ -154,32 +119,23 @@ df1_N = as.numeric(unique(survDementia$TotalSampleSize))
 # Figurint out GTEX_V8 N
 gtex_cortex_covars = fread("/path/to/DATA/GTEX_V8/gtexv8_download/GTEx_Analysis_v8_QTLs/GTEx_Analysis_v8_EUR_sQTL_covariates/Brain_Cortex.v8.EUR.covariates.txt")
 
-# Getting the GENES that are present in the sQTL data
-# Of note, sQTL data for LRP1B is not avail.
-# apoe is present
-
-#> "ENSG00000168702" %in% gtex_cortex_merged$phenotype_id
-#[1] FALSE
-#> "ENSG00000130203" %in% gtex_cortex_merged$phenotype_id
-#[1] TRUE
-
 
 for (index in seq_along(ensembl_gene_ids_overlapping_1Mb_window_hit_sQTLavail)) {
   ensembl_geneID <- ensembl_gene_ids_overlapping_1Mb_window_hit_sQTLavail[index]
   print(str_c(Sys.time(), " - ", index, " - ", ensembl_geneID))
-  gtex_cortex_merged_filtered <- gtex_cortex_merged %>%
+  gtex_cortex_chr2_filtered <- gtex_cortex_chr2 %>%
     dplyr::filter(Gene == ensembl_geneID) %>%
     #check_coloc_data_format(beta_or_pval = "pval", check_maf = TRUE) %>%
     dplyr::filter(!duplicated(SNP))
   
-  df2_N = round(mean(gtex_cortex_merged_filtered$ma_samples))
-  if (isEmpty(gtex_cortex_merged_filtered$SNP)) {
+  df2_N = round(mean(gtex_cortex_chr2_filtered$ma_samples))
+  if (isEmpty(gtex_cortex_chr2_filtered$SNP)) {
     next
   }
   # Subset from which I Calculate the proportion cases mean.
   #df_subset <- survDementia_rsID_vbeta %>% dplyr::filter(SNP %in% ciseQTL_filtered$SNP) 
   coloc_results_annotated <- colochelpR::get_coloc_results(df1 = survDementia,
-                                                           df2 = gtex_cortex_merged_filtered, 
+                                                           df2 = gtex_cortex_chr2_filtered, 
                                                            df1_type = "quant",
                                                            df2_type="quant",
                                                            df1_beta_or_pval="beta",
