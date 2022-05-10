@@ -36,7 +36,7 @@ library(biomaRt)
 
 # Data loading in memory
 
-Since we are focused on LRP1B, I will just explore chr2 gtex_v8_sQTL_Cortex EUR ancestry data.
+We will just explore chr2 gtex_v8_sQTL_Cortex EUR ancestry data.
 GTEX_V8 data is in parquet format, easily readable from C++ based arrow lib. 
 
 ```{r}
