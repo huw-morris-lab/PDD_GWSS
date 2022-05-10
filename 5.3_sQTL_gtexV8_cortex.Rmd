@@ -1,5 +1,5 @@
 ---
-title: "gtexV8_LRP1B"
+title: "gtexV8"
 author: "AMCalejandro"
 date: "24/2/2022"
 output:
@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Description.
 
-Transcriptome analyses have previously revealed complexity in regulation of alternative splicing (AS), an event normally controlled by genetic variants. In this new colocalization analysis, we aim to identify whether variants within LRP1B can be interpreted as cis-acting splicing quantitative trait loci (sQTL). To do so, we are going to make use of sQTL data from GTEX_V8.
+Transcriptome analyses have previously revealed complexity in regulation of alternative splicing (AS), an event normally controlled by genetic variants. In this new colocalization analysis, we aim to identify whether variants within a specific GENE can be interpreted as cis-acting splicing quantitative trait loci (sQTL). To do so, we are going to make use of sQTL data from GTEX_V8.
 
 # Loading libraries
 
@@ -158,7 +158,7 @@ We will set up a PP.H4 > 0.9 to consider the presence of a shared SNP between tr
 
 
 ```{r}
-results_sQTL <- merge_coloc_summaries("/path_to/RESULTS_sQTL_GTEX_CORTEX/progtoDementia_sQTL_GTEX_CORTEX_CHR2_LRP1B/",
+results_sQTL <- merge_coloc_summaries("/path_to/RESULTS_sQTL_GTEX_CORTEX/progtoDementia_sQTL_GTEX_CORTEX_CHR2_GENE/",
                                     add_signif_SNP = F, recursive = T, pattern = ".rda")
 
   # Showing the whole table
