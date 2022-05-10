@@ -1,5 +1,5 @@
 ---
-title: "gtexV8"
+title: "sQTL_gtexV8"
 author: "AMCalejandro"
 date: "24/2/2022"
 output:
@@ -77,7 +77,7 @@ gtex_cortex_chr2_processed <- gtex_cortex_chr2  %>%
   dplyr::rename(p.value = pval_nominal)
   
 
-# We perform some last minor changes and we finally get the data for LRP1B
+# We perform some last minor changes and we finally get the data for GENE of interest
 gtex_cortex_chr2_processed <- gtex_cortex_chr2_processed %>%
   filter((!is.na(p.value)) & (GENE == "ENSG00000168702")) %>%
   mutate(eQTL = "GTEXV8_CORTEX")
@@ -99,7 +99,7 @@ gtex_cortex_chr2_processed_nodups = fread("/path_to/GTEX_V8/sQTL_EUR_CORTEX/gtex
 ```{r results="hide", warning = FALSE, message = FALSE, eval = FALSE}
 results_path = "/path_to/RESULTS_sQTL_GTEX_CORTEX"
 results_path_GWAS_sQTL <- make_results_dir(results_path = results_path,
-                                           folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR2_LRP1B")
+                                           folder_name = "progtoDementia_sQTL_GTEX_CORTEX_CHR2_GENE")
 gwas_path = "/path_to/harmonised_progtoDemGWAS.txt"
 gtex_cortex_path <- "/path_to/gtex_proccessed_CORTEX_chr2.noDUPs_COLOCformatOK.txt"
 
