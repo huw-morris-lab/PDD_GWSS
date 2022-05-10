@@ -1,5 +1,5 @@
 ---
-title: "LRP1B Regional association plots of eQTL/tQTL PsychEncode data against progression to dementia GWAS"
+title: "Gene-specific regional association plots of eQTL/tQTL PsychEncode data against progression to dementia GWAS"
 author: "AlejandroMC, Regina Reynolds"
 date: "15/12/2021"
 output:
@@ -14,11 +14,11 @@ output:
 
 
 
-We are also interested in knowing if there is any variant from the LRP1B loci that regulates alternative splicing. We could not perform coloc because full iso/tQTL data from PsychEncode is not available. Unfortunately, only significant associations from the PsychEncode eQTL data are available, which makes coloc tool inappropiate due to the drastic reduction in sample size.
+We are also interested in knowing if there are varaints from specific loci that regulate alternative splicing. We could not perform coloc because full iso/tQTL data from PsychEncode is not available. Unfortunately, only significant associations from the PsychEncode eQTL data are available, which makes coloc tool inappropiate due to the drastic reduction in sample size.
 
 However, we can still visualise the plotting even though we cannot run coloc.
 
-In this section we generate the regional association plots for tQTL/GWAS, eQTL/GWAS. Note the iQTL/GWAS regional assoc plots could not be generated because LRP1B isoforms were not available on the iQTL dataset.
+In this section we generate the regional association plots for tQTL/GWAS, eQTL/GWAS.
 
 ```{r }
 getwd()
@@ -139,15 +139,15 @@ results_psychEncode <- results_psychEncode %>%
 ```
 
 
-Getting LRP1B over PsychEncode eQTL, tQTL, and iQTL df ( We could not find iQTL data for LRP1B on the latter)
+Getting loci of interest over PsychEncode eQTL and tQTL df 
 ```{r}
-coloc_ens <- results_psychEncode %>% dplyr::filter(hgnc_symbol == "LRP1B")
+coloc_ens <- results_psychEncode %>% dplyr::filter(hgnc_symbol == "GENE")
 
-# We filter the PsychEncode eQTL data for LRP1B
+# We filter the PsychEncode eQTL data for GENE
 PsychEncode_filtered_eQTL <- PsychEncode %>% dplyr::filter(Gene %in% coloc_ens$Gene_2) 
 
 
-# Same for PsychEncode tQTL and iQTL data
+# Same for PsychEncode tQTL 
 
 # Given the transcript id, we take the HGNC symbol and the ensembl gene_id
 ensembl <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
@@ -157,13 +157,8 @@ mapping <- getBM(attributes = c("ensembl_gene_id", "ensembl_transcript_id", "hgn
 
 PsychEncode_filtered_tQTL  <- tQTL %>%
   dplyr::filter(transcript_id %in% mapping$ensembl_transcript_id)
-PsychEncode_filtered_tQTL$hgnc_symbol = "LRP1B"
+PsychEncode_filtered_tQTL$hgnc_symbol = "GENE"
 PsychEncode_filtered_tQTL$Gene = "ENSG00000168702"
-
-# Unfortunately we do not have  
-PsychEncode_filtered_iQTL  <- iQTL %>%
-  dplyr::filter(transcript_id %in% mapping$ensembl_transcript_id)
-  
 
 ```
 
